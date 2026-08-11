@@ -38,7 +38,8 @@ mpmath.mp.dps = 60
 BASE_DIR  = "/lab/solexa_page/xueqi/analysis_codon"
 CDS_FILE  = os.path.join(BASE_DIR, "data/human_CDS_sequence.csv")
 TE_FILE   = "/lab/solexa_page/xueqi/analysis_riboseq/tables/human_liver/all_human_genes_merged_data.csv"
-XCI_FILE  = "/lab/solexa_page/xueqi/general/genes_XCI_Gylemo/tables/chrX_genes_classification_comparison_gylemo_liver_thresh0p05.csv"
+XCI_FILE_GYLEMO = "/lab/solexa_page/xueqi/general/genes_XCI_Gylemo/tables/chrX_genes_classification_comparison_gylemo_liver_thresh0p05.csv"
+XCI_FILE_NEHA   = "/lab/solexa_page/xueqi/general/genes_XCI_Neha/tables/chrX_genes_classification_Neha.csv"
 TABLE_DIR = os.path.join(BASE_DIR, "tables")
 FIG_DIR   = os.path.join(BASE_DIR, "figures")
 
@@ -196,12 +197,13 @@ def plot_co_mega_boxplot(df, value_col, output_file):
 GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
 
 
-def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file):
+def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None):
     """
     Boxplot of `value_col` across the groups in `group_order` that are
     actually present in `df[group_col]` (missing ones are skipped). Prints
     (and shows, in a plot legend) the Mann-Whitney U p-value for every
-    pairwise comparison of groups.
+    pairwise comparison of groups. If `out_csv` is given, saves a table with
+    n / mean per group and the p-value for every pairwise comparison.
     """
     groups = [g for g in group_order if g in set(df[group_col])]
     data = [df.loc[df[group_col] == g, value_col].dropna() for g in groups]
@@ -238,10 +240,88 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
     print(f"  Saved: {output_file}")
 
     print(f"  Pairwise Mann-Whitney U p-values ({title}):")
+    stats_rows = []
     for g1, g2, pval in pairwise:
-        n1 = len(data[groups.index(g1)])
-        n2 = len(data[groups.index(g2)])
+        i, j = groups.index(g1), groups.index(g2)
+        n1, n2 = len(data[i]), len(data[j])
         print(f"    {g1} (n={n1:,}) vs {g2} (n={n2:,}): p = {pval:.3g}")
+        stats_rows.append({
+            'group1': g1, 'n1': n1, 'mean1': data[i].mean(),
+            'group2': g2, 'n2': n2, 'mean2': data[j].mean(),
+            'p_value': pval,
+        })
+
+    if out_csv is not None:
+        pd.DataFrame(stats_rows).to_csv(out_csv, index=False)
+        print(f"  Saved pairwise stats to {out_csv}")
+
+
+def build_xci_groups(codon_df, xci_file, exclude_values=()):
+    """
+    Merge X-linked genes in `codon_df` with a gene_name -> classification
+    table (`xci_file`, columns 'gene_name' and 'classification'), dropping
+    any classification in `exclude_values` (e.g. 'No call'). X-linked genes
+    not found in the table are excluded. Autosomal genes are labeled
+    'Autosome'. Returns (groups_df, x_genes), where `groups_df` has columns
+    ['CO_Mega', 'classification'] ready for `plot_co_mega_by_group`, and
+    `x_genes` is the merged (post-exclusion) X-linked-only frame.
+    """
+    xci_df = pd.read_csv(xci_file, usecols=['gene_name', 'classification'])
+    x_genes = codon_df.loc[codon_df['is_X'] == 1, ['gene_name', 'CO_Mega']].merge(
+        xci_df, on='gene_name', how='inner'
+    )
+    if exclude_values:
+        x_genes = x_genes[~x_genes['classification'].isin(exclude_values)]
+
+    auto_genes = codon_df.loc[codon_df['is_X'] == 0, ['CO_Mega']].copy()
+    auto_genes['classification'] = 'Autosome'
+    groups_df = pd.concat(
+        [auto_genes[['CO_Mega', 'classification']], x_genes[['CO_Mega', 'classification']]],
+        ignore_index=True
+    )
+    return groups_df, x_genes
+
+
+def plot_xci_boxplots(codon_df, xci_file, source_label, exclude_values=()):
+    """
+    For one XCI classification source (e.g. Gylemo or Neha), build and save:
+      - a boxplot + stats table comparing Autosome vs X-linked genes with a
+        defined XCI status (i.e. found in `xci_file`, excluding
+        `exclude_values`)
+      - a boxplot + stats table across the full set of XCI categories
+        (Autosome, Xi-silent, Xi-expressed, NPX-NPY, PAR1, PAR2)
+      - a boxplot + stats table across the reduced set of categories
+        (Autosome, Xi-silent, Xi-expressed)
+    Output files are all suffixed with `_{source_label}`.
+    """
+    groups_df, x_genes = build_xci_groups(codon_df, xci_file, exclude_values=exclude_values)
+    n_x_total = (codon_df['is_X'] == 1).sum()
+    print(f"  {len(x_genes):,} of {n_x_total:,} X-linked genes have a defined XCI status in the "
+          f"{source_label} table ({n_x_total - len(x_genes):,} excluded from these boxplots).")
+
+    defined_xci_df = groups_df.copy()
+    defined_xci_df['group'] = np.where(defined_xci_df['classification'] == 'Autosome', 'Autosome', 'X (defined XCI)')
+    plot_co_mega_by_group(
+        defined_xci_df, 'CO_Mega', 'group', ['Autosome', 'X (defined XCI)'],
+        f'CO_Mega: Autosome vs X (defined XCI status, {source_label})',
+        os.path.join(FIG_DIR, f"co_mega_boxplot_autosome_vs_X_with_defined_XCI_{source_label}.png"),
+        out_csv=os.path.join(TABLE_DIR, f"co_mega_autosome_vs_X_with_defined_XCI_stats_{source_label}.csv")
+    )
+
+    plot_co_mega_by_group(
+        groups_df, 'CO_Mega', 'classification',
+        ['Autosome', 'Xi-silent', 'Xi-expressed', 'NPX-NPY', 'PAR1', 'PAR2'],
+        f'CO_Mega by XCI category ({source_label})',
+        os.path.join(FIG_DIR, f"co_mega_boxplot_XCI_categories_full_{source_label}.png"),
+        out_csv=os.path.join(TABLE_DIR, f"co_mega_XCI_categories_full_stats_{source_label}.csv")
+    )
+    plot_co_mega_by_group(
+        groups_df, 'CO_Mega', 'classification',
+        ['Autosome', 'Xi-silent', 'Xi-expressed'],
+        f'CO_Mega: Autosome vs Xi-silent vs Xi-expressed ({source_label})',
+        os.path.join(FIG_DIR, f"co_mega_boxplot_XCI_categories_reduced_{source_label}.png"),
+        out_csv=os.path.join(TABLE_DIR, f"co_mega_XCI_categories_reduced_stats_{source_label}.csv")
+    )
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
@@ -334,33 +414,11 @@ def main():
     print("\n[5] Boxplot: CO_Mega, autosomal vs X-linked genes...")
     plot_co_mega_boxplot(codon_df, 'CO_Mega', os.path.join(FIG_DIR, "co_mega_boxplot_autosome_vs_X.png"))
 
-    print("\n[6] Boxplots: CO_Mega by XCI category...")
-    xci_df = pd.read_csv(XCI_FILE, usecols=['gene_name', 'classification'])
-    x_genes = codon_df.loc[codon_df['is_X'] == 1, ['gene_name', 'CO_Mega']].merge(
-        xci_df, on='gene_name', how='inner'
-    )
-    n_x_total = (codon_df['is_X'] == 1).sum()
-    print(f"  {len(x_genes):,} of {n_x_total:,} X-linked genes found in the XCI classification table "
-          f"({n_x_total - len(x_genes):,} excluded from these boxplots).")
+    print("\n[6] Boxplots: CO_Mega by XCI category (Gylemo classification)...")
+    plot_xci_boxplots(codon_df, XCI_FILE_GYLEMO, 'Gylemo')
 
-    auto_genes = codon_df.loc[codon_df['is_X'] == 0, ['CO_Mega']].copy()
-    auto_genes['classification'] = 'Autosome'
-    xci_groups = pd.concat(
-        [auto_genes[['CO_Mega', 'classification']], x_genes[['CO_Mega', 'classification']]],
-        ignore_index=True
-    )
-
-    plot_co_mega_by_group(
-        xci_groups, 'CO_Mega', 'classification',
-        ['Autosome', 'Xi-silent', 'Xi-expressed', 'NPX-NPY', 'PAR1', 'PAR2'],
-        'CO_Mega by XCI category', os.path.join(FIG_DIR, "co_mega_boxplot_XCI_categories_full.png")
-    )
-    plot_co_mega_by_group(
-        xci_groups, 'CO_Mega', 'classification',
-        ['Autosome', 'Xi-silent', 'Xi-expressed'],
-        'CO_Mega: Autosome vs Xi-silent vs Xi-expressed',
-        os.path.join(FIG_DIR, "co_mega_boxplot_XCI_categories_reduced.png")
-    )
+    print("\n[7] Boxplots: CO_Mega by XCI category (Neha classification)...")
+    plot_xci_boxplots(codon_df, XCI_FILE_NEHA, 'Neha', exclude_values=('No call',))
 
     print("\n=== Done ===")
 
