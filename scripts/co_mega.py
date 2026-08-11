@@ -1,5 +1,7 @@
 #!/home/xueqisun/miniforge3/envs/xi_app/bin/python3
 """
+NOT USED ANYMORE. See human_co_mega_analysis.py instead.
+
 CO_Mega: a single-variable summary of a gene's codon composition's
 predicted contribution to translation efficiency (TE).
 
