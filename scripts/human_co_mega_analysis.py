@@ -16,24 +16,26 @@ Pipeline:
   5. Apply the fitted model to ALL genes (autosomes + X) to get each gene's
      CO_Mega, report its correlation with TE_mean, and compare CO_Mega
      between autosomal and X-linked genes with a boxplot + Mann-Whitney U.
+
+All output tables/figures are suffixed with `_human_liver`.
 """
 
 import os
-from collections import Counter
 
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from scipy import stats
-import mpmath
 
 from co_mega import SENSE_CODONS, compute_co_mega
-
-mpmath.mp.dps = 60
+from co_mega_common import (
+    precise_pvalue_str, compute_codon_frequencies, fit_co_mega_te_model,
+    save_coefficient_table, plot_actual_vs_predicted, plot_co_mega_boxplot,
+    bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot,
+)
 
 BASE_DIR  = "/lab/solexa_page/xueqi/analysis_codon"
 CDS_FILE  = os.path.join(BASE_DIR, "data/human_CDS_sequence.csv")
@@ -45,44 +47,19 @@ FIG_DIR   = os.path.join(BASE_DIR, "figures")
 
 AUTOSOMES = [str(i) for i in range(1, 23)]
 
+SUFFIX = "human_liver"
+TISSUE_LABEL = "Human liver"
 
-def precise_pvalue_str(r, n, sig_figs=4):
-    """
-    Two-sided p-value for a Pearson correlation r (n observations), computed
-    with arbitrary-precision arithmetic (mpmath) so it doesn't underflow to
-    0.0 in float64 like scipy.stats.pearsonr's p-value does for very
-    significant correlations. Returns a string in scientific notation, e.g.
-    '2.123e-69'.
-    """
-    df = n - 2
-    t_stat = mpmath.mpf(r) * mpmath.sqrt(mpmath.mpf(df) / (1 - mpmath.mpf(r) ** 2))
-    x = mpmath.mpf(df) / (mpmath.mpf(df) + t_stat ** 2)
-    sf = mpmath.mpf('0.5') * mpmath.betainc(mpmath.mpf(df) / 2, mpmath.mpf('0.5'), 0, x, regularized=True)
-    p = 2 * sf
-    return mpmath.nstr(p, sig_figs, min_fixed=0, max_fixed=0)
+
+def tbl(name):
+    return os.path.join(TABLE_DIR, f"{name}_{SUFFIX}.csv")
+
+
+def fig(name):
+    return os.path.join(FIG_DIR, f"{name}_{SUFFIX}.png")
 
 
 # ── Codon frequencies ───────────────────────────────────────────────────────
-def compute_codon_frequencies(cds_seq, codons=SENSE_CODONS):
-    """
-    Split a CDS sequence into non-overlapping 3-base codons, drop the last
-    codon (the stop codon), and return each of `codons`' frequency as
-    (# that codon) / (# codons remaining after dropping the stop codon).
-    Returns None if the sequence isn't usable (missing, not a multiple of 3,
-    or too short to have any non-stop codons).
-    """
-    if not isinstance(cds_seq, str) or len(cds_seq) % 3 != 0:
-        return None
-    n_codons_total = len(cds_seq) // 3
-    if n_codons_total < 2:
-        return None
-    all_codons = [cds_seq[i:i + 3] for i in range(0, len(cds_seq), 3)]
-    coding_codons = all_codons[:-1]  # drop the last (stop) codon
-    total = len(coding_codons)
-    counts = Counter(coding_codons)
-    return {c: counts.get(c, 0) / total for c in codons}
-
-
 def load_codon_frequencies(cds_file):
     df = pd.read_csv(cds_file, usecols=['gene_id', 'gene_name', 'chromosome', 'CDS_sequence'])
     print(f"  Loaded {len(df):,} genes from {cds_file}")
@@ -103,97 +80,7 @@ def load_codon_frequencies(cds_file):
     return out
 
 
-# ── Regression ────────────────────────────────────────────────────────────
-def fit_co_mega_te_model(codon_freq_df, te, codons=SENSE_CODONS):
-    """
-    Fit TE ~ codon frequencies (OLS) and return (coef, model), where `coef`
-    is a Series indexed by 'intercept' + `codons`, ready for
-    `co_mega.compute_co_mega`.
-    """
-    X = sm.add_constant(codon_freq_df[list(codons)])
-    model = sm.OLS(np.asarray(te, dtype=float), X).fit()
-    coef = model.params.rename({'const': 'intercept'})
-    return coef, model
-
-
-def save_coefficient_table(coef, model, codons, out_file):
-    names = ['intercept'] + list(codons)
-    rows = []
-    for name in names:
-        rows.append({
-            'term': name,
-            'coefficient': coef[name],
-            'std_err': model.bse[name if name != 'intercept' else 'const'],
-            't_value': model.tvalues[name if name != 'intercept' else 'const'],
-            'p_value': model.pvalues[name if name != 'intercept' else 'const'],
-        })
-    coef_df = pd.DataFrame(rows)
-    coef_df.to_csv(out_file, index=False)
-    print(f"  Saved intercept + {len(codons)} codon coefficients to {out_file}")
-    return coef_df
-
-
-# ── Plot ─────────────────────────────────────────────────────────────────
-def plot_actual_vs_predicted(actual, predicted, xlabel, ylabel, title, r, p_str, output_file):
-    """
-    Scatter of some 'actual' quantity vs. a model-derived 'predicted' one
-    (e.g. actual TE_mean vs. fitted TE_mean, or actual TE_mean vs. CO_Mega),
-    with a y = x reference line, equal axis scales, and R / R^2 / p / n
-    annotated.
-    """
-    actual = np.asarray(actual, dtype=float)
-    predicted = np.asarray(predicted, dtype=float)
-    r_squared = r ** 2
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(actual, predicted, s=8, alpha=0.3, color='#377EB8', edgecolor='none')
-    lims = [min(actual.min(), predicted.min()), max(actual.max(), predicted.max())]
-    ax.plot(lims, lims, color='gray', linestyle='--', linewidth=1, label='y = x')
-    ax.set_xlim(lims)
-    ax.set_ylim(lims)
-    ax.set_aspect('equal', adjustable='box')
-
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title, fontweight='bold')
-    ax.annotate(f"R = {r:.4f}\nR\u00b2 = {r_squared:.4f}\np = {p_str}\nn = {len(actual):,}",
-                xy=(0.05, 0.95), xycoords='axes fraction', va='top', ha='left', fontsize=9,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
-    ax.legend(loc='lower right', fontsize=8)
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=150)
-    plt.close()
-    print(f"  Saved: {output_file}  (R = {r:.4f}, R^2 = {r_squared:.4f}, p = {p_str}, n = {len(actual):,})")
-
-
-def plot_co_mega_boxplot(df, value_col, output_file):
-    autosome = df.loc[df['is_X'] == 0, value_col].dropna()
-    x_chrom = df.loc[df['is_X'] == 1, value_col].dropna()
-    pval = stats.mannwhitneyu(autosome, x_chrom, alternative='two-sided').pvalue
-
-    fig, ax = plt.subplots(figsize=(5, 6))
-    bp = ax.boxplot(
-        [autosome, x_chrom],
-        tick_labels=[f'Autosome\n(n={len(autosome):,})', f'X chromosome\n(n={len(x_chrom):,})'],
-        patch_artist=True, widths=0.5, showfliers=True,
-        flierprops=dict(marker='o', markersize=3, alpha=0.3, markeredgecolor='none')
-    )
-    for patch, color in zip(bp['boxes'], ['#377EB8', '#E41A1C']):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
-
-    ax.set_ylabel('CO_Mega')
-    ax.set_title('CO_Mega: X-linked vs Autosomal genes', fontweight='bold')
-    ax.annotate(f"Mann-Whitney U\np = {pval:.3g}",
-                xy=(0.5, 0.98), xycoords='axes fraction', va='top', ha='center', fontsize=9,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=150)
-    plt.close()
-    print(f"  Saved: {output_file}  (Mann-Whitney U p = {pval:.3g}, "
-          f"median autosome = {autosome.median():.3f}, median X = {x_chrom.median():.3f})")
-
-
+# ── Plot: XCI-category boxplots (human-specific) ────────────────────────────
 GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
 
 
@@ -215,7 +102,7 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
             pval = stats.mannwhitneyu(data[i], data[j], alternative='two-sided').pvalue
             pairwise.append((groups[i], groups[j], pval))
 
-    fig, ax = plt.subplots(figsize=(1.6 * len(groups) + 3.5, 6))
+    fig_, ax = plt.subplots(figsize=(1.6 * len(groups) + 3.5, 6))
     bp = ax.boxplot(
         data, tick_labels=labels, patch_artist=True, widths=0.5, showfliers=True,
         flierprops=dict(marker='o', markersize=3, alpha=0.3, markeredgecolor='none')
@@ -292,7 +179,7 @@ def plot_xci_boxplots(codon_df, xci_file, source_label, exclude_values=()):
         (Autosome, Xi-silent, Xi-expressed, NPX-NPY, PAR1, PAR2)
       - a boxplot + stats table across the reduced set of categories
         (Autosome, Xi-silent, Xi-expressed)
-    Output files are all suffixed with `_{source_label}`.
+    Output files are all suffixed with `_{source_label}_human_liver`.
     """
     groups_df, x_genes = build_xci_groups(codon_df, xci_file, exclude_values=exclude_values)
     n_x_total = (codon_df['is_X'] == 1).sum()
@@ -303,24 +190,24 @@ def plot_xci_boxplots(codon_df, xci_file, source_label, exclude_values=()):
     defined_xci_df['group'] = np.where(defined_xci_df['classification'] == 'Autosome', 'Autosome', 'X (defined XCI)')
     plot_co_mega_by_group(
         defined_xci_df, 'CO_Mega', 'group', ['Autosome', 'X (defined XCI)'],
-        f'CO_Mega: Autosome vs X (defined XCI status, {source_label})',
-        os.path.join(FIG_DIR, f"co_mega_boxplot_autosome_vs_X_with_defined_XCI_{source_label}.png"),
-        out_csv=os.path.join(TABLE_DIR, f"co_mega_autosome_vs_X_with_defined_XCI_stats_{source_label}.csv")
+        f'CO_Mega: Autosome vs X (defined XCI status, {source_label}, {TISSUE_LABEL})',
+        fig(f"co_mega_boxplot_autosome_vs_X_with_defined_XCI_{source_label}"),
+        out_csv=tbl(f"co_mega_autosome_vs_X_with_defined_XCI_stats_{source_label}")
     )
 
     plot_co_mega_by_group(
         groups_df, 'CO_Mega', 'classification',
         ['Autosome', 'Xi-silent', 'Xi-expressed', 'NPX-NPY', 'PAR1', 'PAR2'],
-        f'CO_Mega by XCI category ({source_label})',
-        os.path.join(FIG_DIR, f"co_mega_boxplot_XCI_categories_full_{source_label}.png"),
-        out_csv=os.path.join(TABLE_DIR, f"co_mega_XCI_categories_full_stats_{source_label}.csv")
+        f'CO_Mega by XCI category ({source_label}, {TISSUE_LABEL})',
+        fig(f"co_mega_boxplot_XCI_categories_full_{source_label}"),
+        out_csv=tbl(f"co_mega_XCI_categories_full_stats_{source_label}")
     )
     plot_co_mega_by_group(
         groups_df, 'CO_Mega', 'classification',
         ['Autosome', 'Xi-silent', 'Xi-expressed'],
-        f'CO_Mega: Autosome vs Xi-silent vs Xi-expressed ({source_label})',
-        os.path.join(FIG_DIR, f"co_mega_boxplot_XCI_categories_reduced_{source_label}.png"),
-        out_csv=os.path.join(TABLE_DIR, f"co_mega_XCI_categories_reduced_stats_{source_label}.csv")
+        f'CO_Mega: Autosome vs Xi-silent vs Xi-expressed ({source_label}, {TISSUE_LABEL})',
+        fig(f"co_mega_boxplot_XCI_categories_reduced_{source_label}"),
+        out_csv=tbl(f"co_mega_XCI_categories_reduced_stats_{source_label}")
     )
 
 
@@ -329,11 +216,11 @@ def main():
     os.makedirs(TABLE_DIR, exist_ok=True)
     os.makedirs(FIG_DIR, exist_ok=True)
 
-    print("=== Human CO_Mega model ===")
+    print("=== Human CO_Mega model (human liver) ===")
 
     print("\n[1] Computing codon frequencies from CDS sequences...")
     codon_df = load_codon_frequencies(CDS_FILE)
-    out_codon = os.path.join(TABLE_DIR, "human_codon_frequencies.csv")
+    out_codon = tbl("codon_frequencies")
     codon_df.to_csv(out_codon, index=False)
     print(f"  Saved codon frequencies to {out_codon}")
 
@@ -351,7 +238,7 @@ def main():
     coef, model = fit_co_mega_te_model(train[SENSE_CODONS], train['TE_mean'])
     print(f"  R^2 = {model.rsquared:.4f}   Adjusted R^2 = {model.rsquared_adj:.4f}   n = {int(model.nobs)}")
 
-    out_coef = os.path.join(TABLE_DIR, "co_mega_model_coefficients.csv")
+    out_coef = tbl("co_mega_model_coefficients")
     save_coefficient_table(coef, model, SENSE_CODONS, out_coef)
 
     r_train, _ = stats.pearsonr(train['TE_mean'], model.fittedvalues)
@@ -359,8 +246,8 @@ def main():
     plot_actual_vs_predicted(
         train['TE_mean'], model.fittedvalues,
         'Actual TE_mean (autosomal training genes)', 'Fitted TE_mean (OLS model)',
-        'Original regression: TE ~ codon frequencies\n(autosomal training genes)',
-        r_train, p_train_str, os.path.join(FIG_DIR, "co_mega_regression_fit_train.png")
+        f'Original regression: TE ~ codon frequencies\n(autosomal training genes, {TISSUE_LABEL})',
+        r_train, p_train_str, fig("co_mega_regression_fit_train")
     )
 
     print("\n[4] Computing CO_Mega for all genes (autosomes + X) and comparing to TE...")
@@ -390,34 +277,46 @@ def main():
         {'gene_set': 'Autosomal genes', 'n': len(auto_te), 'pearson_r': r_auto, 'p_value': p_auto_str},
         {'gene_set': 'X-linked genes', 'n': len(x_te), 'pearson_r': r_x, 'p_value': p_x_str},
     ])
-    out_corr = os.path.join(TABLE_DIR, "co_mega_te_correlation_stats.csv")
+    out_corr = tbl("co_mega_te_correlation_stats")
     corr_stats.to_csv(out_corr, index=False)
     print(f"  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to {out_corr}")
 
     plot_actual_vs_predicted(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
-                              'Actual TE vs. CO_Mega: All genes', r_all, p_all_str,
-                              os.path.join(FIG_DIR, "co_mega_vs_te_all_genes.png"))
+                              f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', r_all, p_all_str,
+                              fig("co_mega_vs_te_all_genes"))
     plot_actual_vs_predicted(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
-                              'Actual TE vs. CO_Mega: Autosomal genes', r_auto, p_auto_str,
-                              os.path.join(FIG_DIR, "co_mega_vs_te_autosomal.png"))
+                              f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', r_auto, p_auto_str,
+                              fig("co_mega_vs_te_autosomal"))
     if len(x_te) > 1:
         plot_actual_vs_predicted(x_te['TE_mean'], x_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
-                                  'Actual TE vs. CO_Mega: X-linked genes', r_x, p_x_str,
-                                  os.path.join(FIG_DIR, "co_mega_vs_te_X_linked.png"))
+                                  f'Actual TE vs. CO_Mega: X-linked genes ({TISSUE_LABEL})', r_x, p_x_str,
+                                  fig("co_mega_vs_te_X_linked"))
 
-    out_all = os.path.join(TABLE_DIR, "co_mega_all_genes.csv")
+    out_all = tbl("co_mega_all_genes")
     codon_df[['gene_id', 'gene_name', 'chromosome', 'is_X', 'CO_Mega']].merge(
         te_df, on='gene_id', how='left'
     ).to_csv(out_all, index=False)
     print(f"  Saved CO_Mega for all {len(codon_df):,} genes to {out_all}")
 
     print("\n[5] Boxplot: CO_Mega, autosomal vs X-linked genes...")
-    plot_co_mega_boxplot(codon_df, 'CO_Mega', os.path.join(FIG_DIR, "co_mega_boxplot_autosome_vs_X.png"))
+    plot_co_mega_boxplot(codon_df, 'CO_Mega', 'is_X', 'X chromosome',
+                          f'CO_Mega: X-linked vs Autosomal genes ({TISSUE_LABEL})',
+                          fig("co_mega_boxplot_autosome_vs_X"))
 
-    print("\n[6] Boxplots: CO_Mega by XCI category (Gylemo classification)...")
+    print("\n[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...")
+    r_df = bootstrap_codon_pearson_r(train[SENSE_CODONS], train['TE_mean'], SENSE_CODONS)
+    out_codon_r = tbl("co_mega_codon_pearson_r")
+    r_df.to_csv(out_codon_r, index=False)
+    print(f"  Saved per-codon Pearson r (+ bootstrap SD) to {out_codon_r}")
+    plot_codon_pearson_r_barplot(
+        r_df, f'Pearson R between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
+        fig("co_mega_codon_pearson_r_barplot")
+    )
+
+    print("\n[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...")
     plot_xci_boxplots(codon_df, XCI_FILE_GYLEMO, 'Gylemo')
 
-    print("\n[7] Boxplots: CO_Mega by XCI category (Neha classification)...")
+    print("\n[8] Boxplots: CO_Mega by XCI category (Neha classification)...")
     plot_xci_boxplots(codon_df, XCI_FILE_NEHA, 'Neha', exclude_values=('No call',))
 
     print("\n=== Done ===")

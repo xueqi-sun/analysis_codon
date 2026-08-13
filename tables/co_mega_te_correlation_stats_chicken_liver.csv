@@ -1,0 +1,4 @@
+gene_set,n,pearson_r,p_value
+All genes,3679,0.6301040752227918,2.464e-406
+Autosomal genes,3473,0.6274090841565868,1.82e-379
+Z-linked genes,206,0.6010831710555117,1.271e-21
