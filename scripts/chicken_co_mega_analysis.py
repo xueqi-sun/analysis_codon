@@ -40,7 +40,7 @@ from co_mega import SENSE_CODONS, compute_co_mega
 from co_mega_common import (
     precise_pvalue_str, compute_codon_frequencies, fit_co_mega_te_model,
     save_coefficient_table, plot_actual_vs_predicted, plot_co_mega_boxplot,
-    bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot,
+    bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot, parse_cds_fasta,
 )
 
 BASE_DIR    = "/lab/solexa_page/xueqi/analysis_codon"
@@ -63,49 +63,6 @@ def tbl(name):
 
 def fig(name):
     return os.path.join(FIG_DIR, f"{name}_{SUFFIX}.png")
-
-
-# ── Step 1: parse CDS FASTA -> CSV ──────────────────────────────────────────
-def parse_cds_fasta(fasta_file, out_csv):
-    """
-    Parse a FASTA file whose headers look like:
-      >gene_id|gene_id.version|transcript_id|transcript_id.version|gene_name|chromosome
-    into a DataFrame with columns matching human_CDS_sequence.csv
-    (gene_id, gene_id_version, transcript_id, transcript_id_version,
-    chromosome, gene_name, CDS_sequence), and save it as `out_csv`.
-    """
-    records = []
-    header_fields = None
-    seq_chunks = []
-
-    def flush():
-        if header_fields is not None:
-            gene_id, gene_id_version, transcript_id, transcript_id_version, gene_name, chromosome = header_fields
-            records.append({
-                'gene_id': gene_id, 'gene_id_version': gene_id_version,
-                'transcript_id': transcript_id, 'transcript_id_version': transcript_id_version,
-                'chromosome': chromosome, 'gene_name': gene_name,
-                'CDS_sequence': ''.join(seq_chunks),
-            })
-
-    with open(fasta_file) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith('>'):
-                flush()
-                header_fields = line[1:].split('|')
-                seq_chunks = []
-            else:
-                seq_chunks.append(line)
-    flush()
-
-    df = pd.DataFrame(records)
-    df.to_csv(out_csv, index=False)
-    print(f"  Parsed {len(df):,} chicken CDS records from {fasta_file}")
-    print(f"  Saved to {out_csv}")
-    return df
 
 
 # ── Step 2: codon frequencies ───────────────────────────────────────────────

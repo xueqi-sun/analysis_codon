@@ -38,6 +38,49 @@ def precise_pvalue_str(r, n, sig_figs=4):
     return mpmath.nstr(p, sig_figs, min_fixed=0, max_fixed=0)
 
 
+# ── FASTA parsing ────────────────────────────────────────────────────────────
+def parse_cds_fasta(fasta_file, out_csv):
+    """
+    Parse a FASTA file whose headers look like:
+      >gene_id|gene_id.version|transcript_id|transcript_id.version|gene_name|chromosome
+    into a DataFrame with columns matching human_CDS_sequence.csv
+    (gene_id, gene_id_version, transcript_id, transcript_id_version,
+    chromosome, gene_name, CDS_sequence), and save it as `out_csv`.
+    """
+    records = []
+    header_fields = None
+    seq_chunks = []
+
+    def flush():
+        if header_fields is not None:
+            gene_id, gene_id_version, transcript_id, transcript_id_version, gene_name, chromosome = header_fields
+            records.append({
+                'gene_id': gene_id, 'gene_id_version': gene_id_version,
+                'transcript_id': transcript_id, 'transcript_id_version': transcript_id_version,
+                'chromosome': chromosome, 'gene_name': gene_name,
+                'CDS_sequence': ''.join(seq_chunks),
+            })
+
+    with open(fasta_file) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('>'):
+                flush()
+                header_fields = line[1:].split('|')
+                seq_chunks = []
+            else:
+                seq_chunks.append(line)
+    flush()
+
+    df = pd.DataFrame(records)
+    df.to_csv(out_csv, index=False)
+    print(f"  Parsed {len(df):,} CDS records from {fasta_file}")
+    print(f"  Saved to {out_csv}")
+    return df
+
+
 # ── Codon frequencies ───────────────────────────────────────────────────────
 def compute_codon_frequencies(cds_seq, codons=SENSE_CODONS):
     """
@@ -212,7 +255,7 @@ def plot_codon_pearson_r_barplot(r_df, title, output_file):
     df_sorted = r_df.sort_values('pearson_r', ascending=False).reset_index(drop=True)
 
     fig, ax = plt.subplots(figsize=(18, 6))
-    colors = ['#4DAF4A' if r >= 0 else '#E41A1C' for r in df_sorted['pearson_r']]
+    colors = ['#377EB8' if r >= 0 else '#FF7F00' for r in df_sorted['pearson_r']]
     ax.bar(df_sorted['codon'], df_sorted['pearson_r'], yerr=df_sorted['boot_sd'],
            color=colors, alpha=0.8, capsize=2, error_kw=dict(elinewidth=0.8, capthick=0.8))
     ax.axhline(0, color='black', linewidth=0.8)
@@ -223,6 +266,120 @@ def plot_codon_pearson_r_barplot(r_df, title, output_file):
     ax.set_xticks(range(len(df_sorted)))
     ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
     ax.annotate(f"n = {int(df_sorted['n'].iloc[0]):,}\nerror bars = bootstrap SD ({len(df_sorted):,} codons)",
+                xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
+
+
+# ── Plot: per-codon Pearson r comparison between two species/tissues ──────
+def plot_pearson_r_comparison_scatter(cmp_df, y_label, x_label, r_corr, p_corr, rho_corr, p_rho, output_file,
+                                       yerr=None, error_label=None):
+    """
+    Scatter of one species/tissue's per-codon Pearson r (`cmp_df['pearson_r_y']`)
+    vs. another's (`cmp_df['pearson_r_x']`), one point per codon (labeled),
+    with a y = x reference line and the Pearson/Spearman correlation between
+    the two annotated. Optionally draws asymmetric error bars (`yerr`) on the
+    y-axis values, e.g. a confidence interval, labeled by `error_label`.
+    """
+    fig, ax = plt.subplots(figsize=(7, 7))
+    if yerr is not None:
+        ax.errorbar(cmp_df['pearson_r_x'], cmp_df['pearson_r_y'], yerr=yerr,
+                     fmt='o', markersize=5, color='#377EB8', ecolor='#377EB8',
+                     elinewidth=0.8, capsize=2, alpha=0.85)
+    else:
+        ax.scatter(cmp_df['pearson_r_x'], cmp_df['pearson_r_y'], s=25, color='#377EB8')
+    for _, row in cmp_df.iterrows():
+        ax.annotate(row['codon'], (row['pearson_r_x'], row['pearson_r_y']), fontsize=6,
+                    xytext=(2, 2), textcoords='offset points')
+
+    lo = min(cmp_df['pearson_r_x'].min(), cmp_df['pearson_r_y'].min()) - 0.05
+    hi = max(cmp_df['pearson_r_x'].max(), cmp_df['pearson_r_y'].max()) + 0.05
+    lims = [lo, hi]
+    ax.plot(lims, lims, color='gray', linestyle='--', linewidth=1, label='y = x')
+    ax.axhline(0, color='black', linewidth=0.5)
+    ax.axvline(0, color='black', linewidth=0.5)
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
+    ax.set_aspect('equal', adjustable='box')
+
+    ax.set_xlabel(f'Pearson R between codon frequency and TE ({x_label})')
+    ax.set_ylabel(f'Pearson R between codon frequency and TE ({y_label})')
+    ax.set_title(f'Per-codon Pearson R: {y_label} vs. {x_label}', fontweight='bold')
+    annotation = (f"Pearson R = {r_corr:.4f} (p = {p_corr:.3g})\n"
+                  f"Spearman rho = {rho_corr:.4f} (p = {p_rho:.3g})\nn = {len(cmp_df)} codons")
+    if error_label is not None:
+        annotation += f"\nerror bars = {error_label}"
+    ax.annotate(
+        annotation,
+        xy=(0.05, 0.95), xycoords='axes fraction', va='top', ha='left', fontsize=9,
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
+    ax.legend(loc='lower right', fontsize=8)
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
+
+
+# ── Per-codon Pearson r vs. TE, ordinary (analytic Fisher-z CI) ────────────
+def ordinary_codon_pearson_r(codon_freq_df, te, codons=SENSE_CODONS, confidence=0.95):
+    """
+    For each codon, compute its ordinary (non-bootstrap) Pearson r with `te`,
+    plus an analytic confidence interval obtained via the Fisher z
+    transformation (z = arctanh(r), SE_z = 1/sqrt(n-3)), rather than a
+    bootstrap SD.
+
+    Returns a DataFrame with columns: codon, pearson_r, ci_lower, ci_upper,
+    p_value (precise, scientific-notation string), n.
+    """
+    X = codon_freq_df[list(codons)].to_numpy(dtype=float)
+    y = np.asarray(te, dtype=float)
+    n = len(y)
+
+    r = _pearson_r_columns(X, y)
+    z = np.arctanh(r)
+    se_z = 1.0 / np.sqrt(n - 3)
+    z_crit = stats.norm.ppf(0.5 + confidence / 2)
+    ci_lower = np.tanh(z - z_crit * se_z)
+    ci_upper = np.tanh(z + z_crit * se_z)
+
+    p_values = [precise_pvalue_str(ri, n) for ri in r]
+
+    return pd.DataFrame({
+        'codon': list(codons),
+        'pearson_r': r,
+        'ci_lower': ci_lower,
+        'ci_upper': ci_upper,
+        'p_value': p_values,
+        'n': n,
+    })
+
+
+def plot_codon_pearson_r_barplot_ci(r_df, title, output_file, confidence=0.95):
+    """
+    Bar plot of each codon's Pearson r with TE (from `ordinary_codon_pearson_r`),
+    sorted in descending order of r, with analytic Fisher-z confidence-interval
+    error bars.
+    """
+    df_sorted = r_df.sort_values('pearson_r', ascending=False).reset_index(drop=True)
+    lower_err = (df_sorted['pearson_r'] - df_sorted['ci_lower']).to_numpy()
+    upper_err = (df_sorted['ci_upper'] - df_sorted['pearson_r']).to_numpy()
+
+    fig, ax = plt.subplots(figsize=(18, 6))
+    colors = ['#377EB8' if r >= 0 else '#FF7F00' for r in df_sorted['pearson_r']]
+    ax.bar(df_sorted['codon'], df_sorted['pearson_r'], yerr=[lower_err, upper_err],
+           color=colors, alpha=0.8, capsize=2, error_kw=dict(elinewidth=0.8, capthick=0.8))
+    ax.axhline(0, color='black', linewidth=0.8)
+
+    ax.set_xlabel('Codon')
+    ax.set_ylabel('Pearson R between codon frequency and TE')
+    ax.set_title(title, fontweight='bold')
+    ax.set_xticks(range(len(df_sorted)))
+    ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
+    ax.annotate(f"n = {int(df_sorted['n'].iloc[0]):,}\n"
+                f"error bars = {confidence:.0%} Fisher-z CI ({len(df_sorted):,} codons)",
                 xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
     plt.tight_layout()
