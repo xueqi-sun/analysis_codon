@@ -24,10 +24,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 from scipy import stats
 
 from co_mega import SENSE_CODONS, compute_co_mega
@@ -35,6 +31,7 @@ from co_mega_common import (
     precise_pvalue_str, compute_codon_frequencies, fit_co_mega_te_model,
     save_coefficient_table, plot_actual_vs_predicted, plot_co_mega_boxplot,
     bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot,
+    plot_co_mega_by_group, build_xci_groups,
 )
 
 BASE_DIR  = "/lab/solexa_page/xueqi/analysis_codon"
@@ -81,94 +78,6 @@ def load_codon_frequencies(cds_file):
 
 
 # ── Plot: XCI-category boxplots (human-specific) ────────────────────────────
-GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
-
-
-def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None):
-    """
-    Boxplot of `value_col` across the groups in `group_order` that are
-    actually present in `df[group_col]` (missing ones are skipped). Prints
-    (and shows, in a plot legend) the Mann-Whitney U p-value for every
-    pairwise comparison of groups. If `out_csv` is given, saves a table with
-    n / mean per group and the p-value for every pairwise comparison.
-    """
-    groups = [g for g in group_order if g in set(df[group_col])]
-    data = [df.loc[df[group_col] == g, value_col].dropna() for g in groups]
-    labels = [f'{g}\n(n={len(d):,})\n(mean={d.mean():.3f})' for g, d in zip(groups, data)]
-
-    pairwise = []
-    for i in range(len(groups)):
-        for j in range(i + 1, len(groups)):
-            pval = stats.mannwhitneyu(data[i], data[j], alternative='two-sided').pvalue
-            pairwise.append((groups[i], groups[j], pval))
-
-    fig_, ax = plt.subplots(figsize=(1.6 * len(groups) + 3.5, 6))
-    bp = ax.boxplot(
-        data, tick_labels=labels, patch_artist=True, widths=0.5, showfliers=True,
-        flierprops=dict(marker='o', markersize=3, alpha=0.3, markeredgecolor='none')
-    )
-    for patch, color in zip(bp['boxes'], GROUP_COLORS):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
-
-    ax.set_ylabel('CO_Mega')
-    ax.set_title(title, fontweight='bold')
-
-    legend_text = "Mann-Whitney U p-values:\n" + "\n".join(
-        f"{g1} vs {g2}: p = {pval:.3g}" for g1, g2, pval in pairwise
-    )
-    legend_handle = Line2D([], [], color='none', label=legend_text)
-    ax.legend(handles=[legend_handle], loc='upper left', bbox_to_anchor=(1.01, 1.0),
-              fontsize=7, handlelength=0, handletextpad=0, frameon=True, borderaxespad=0)
-
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=150)
-    plt.close()
-    print(f"  Saved: {output_file}")
-
-    print(f"  Pairwise Mann-Whitney U p-values ({title}):")
-    stats_rows = []
-    for g1, g2, pval in pairwise:
-        i, j = groups.index(g1), groups.index(g2)
-        n1, n2 = len(data[i]), len(data[j])
-        print(f"    {g1} (n={n1:,}) vs {g2} (n={n2:,}): p = {pval:.3g}")
-        stats_rows.append({
-            'group1': g1, 'n1': n1, 'mean1': data[i].mean(),
-            'group2': g2, 'n2': n2, 'mean2': data[j].mean(),
-            'p_value': pval,
-        })
-
-    if out_csv is not None:
-        pd.DataFrame(stats_rows).to_csv(out_csv, index=False)
-        print(f"  Saved pairwise stats to {out_csv}")
-
-
-def build_xci_groups(codon_df, xci_file, exclude_values=()):
-    """
-    Merge X-linked genes in `codon_df` with a gene_name -> classification
-    table (`xci_file`, columns 'gene_name' and 'classification'), dropping
-    any classification in `exclude_values` (e.g. 'No call'). X-linked genes
-    not found in the table are excluded. Autosomal genes are labeled
-    'Autosome'. Returns (groups_df, x_genes), where `groups_df` has columns
-    ['CO_Mega', 'classification'] ready for `plot_co_mega_by_group`, and
-    `x_genes` is the merged (post-exclusion) X-linked-only frame.
-    """
-    xci_df = pd.read_csv(xci_file, usecols=['gene_name', 'classification'])
-    x_genes = codon_df.loc[codon_df['is_X'] == 1, ['gene_name', 'CO_Mega']].merge(
-        xci_df, on='gene_name', how='inner'
-    )
-    if exclude_values:
-        x_genes = x_genes[~x_genes['classification'].isin(exclude_values)]
-
-    auto_genes = codon_df.loc[codon_df['is_X'] == 0, ['CO_Mega']].copy()
-    auto_genes['classification'] = 'Autosome'
-    groups_df = pd.concat(
-        [auto_genes[['CO_Mega', 'classification']], x_genes[['CO_Mega', 'classification']]],
-        ignore_index=True
-    )
-    return groups_df, x_genes
-
-
 def plot_xci_boxplots(codon_df, xci_file, source_label, exclude_values=()):
     """
     For one XCI classification source (e.g. Gylemo or Neha), build and save:

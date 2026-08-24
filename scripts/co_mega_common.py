@@ -6,6 +6,7 @@ fitting/reporting, precise (non-underflowing) p-values, and the plotting
 functions common to both species' pipelines.
 """
 
+import textwrap
 from collections import Counter
 
 import numpy as np
@@ -14,6 +15,7 @@ import statsmodels.api as sm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from scipy import stats
 import mpmath
 
@@ -191,8 +193,9 @@ def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_f
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
 
+    wrapped_title = "\n".join(textwrap.fill(line, width=52) for line in title.split("\n"))
     ax.set_ylabel('CO_Mega')
-    ax.set_title(title, fontweight='bold', fontsize=12)
+    ax.set_title(wrapped_title, fontweight='bold', fontsize=12)
     ax.annotate(f"Mann-Whitney U\np = {pval:.3g}",
                 xy=(0.5, 0.98), xycoords='axes fraction', va='top', ha='center', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
@@ -201,6 +204,96 @@ def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_f
     plt.close()
     print(f"  Saved: {output_file}  (Mann-Whitney U p = {pval:.3g}, "
           f"mean autosome = {autosome.mean():.3f}, mean {group1_label} = {other.mean():.3f})")
+
+
+# ── Plot: multi-group (e.g. XCI-category) boxplot ───────────────────────────
+GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
+
+
+def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None):
+    """
+    Boxplot of `value_col` across the groups in `group_order` that are
+    actually present in `df[group_col]` (missing ones are skipped). Prints
+    (and shows, in a plot legend) the Mann-Whitney U p-value for every
+    pairwise comparison of groups. If `out_csv` is given, saves a table with
+    n / mean per group and the p-value for every pairwise comparison.
+    """
+    groups = [g for g in group_order if g in set(df[group_col])]
+    data = [df.loc[df[group_col] == g, value_col].dropna() for g in groups]
+    labels = [f'{g}\n(n={len(d):,})\n(mean={d.mean():.3f})' for g, d in zip(groups, data)]
+
+    pairwise = []
+    for i in range(len(groups)):
+        for j in range(i + 1, len(groups)):
+            pval = stats.mannwhitneyu(data[i], data[j], alternative='two-sided').pvalue
+            pairwise.append((groups[i], groups[j], pval))
+
+    fig, ax = plt.subplots(figsize=(1.6 * len(groups) + 3.5, 6))
+    bp = ax.boxplot(
+        data, tick_labels=labels, patch_artist=True, widths=0.5, showfliers=True,
+        flierprops=dict(marker='o', markersize=3, alpha=0.3, markeredgecolor='none')
+    )
+    for patch, color in zip(bp['boxes'], GROUP_COLORS):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+
+    ax.set_ylabel(value_col)
+    ax.set_title(title, fontweight='bold')
+
+    legend_text = "Mann-Whitney U p-values:\n" + "\n".join(
+        f"{g1} vs {g2}: p = {pval:.3g}" for g1, g2, pval in pairwise
+    )
+    legend_handle = Line2D([], [], color='none', label=legend_text)
+    ax.legend(handles=[legend_handle], loc='upper left', bbox_to_anchor=(1.01, 1.0),
+              fontsize=7, handlelength=0, handletextpad=0, frameon=True, borderaxespad=0)
+
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
+
+    print(f"  Pairwise Mann-Whitney U p-values ({title}):")
+    stats_rows = []
+    for g1, g2, pval in pairwise:
+        i, j = groups.index(g1), groups.index(g2)
+        n1, n2 = len(data[i]), len(data[j])
+        print(f"    {g1} (n={n1:,}) vs {g2} (n={n2:,}): p = {pval:.3g}")
+        stats_rows.append({
+            'group1': g1, 'n1': n1, 'mean1': data[i].mean(),
+            'group2': g2, 'n2': n2, 'mean2': data[j].mean(),
+            'p_value': pval,
+        })
+
+    if out_csv is not None:
+        pd.DataFrame(stats_rows).to_csv(out_csv, index=False)
+        print(f"  Saved pairwise stats to {out_csv}")
+
+
+def build_xci_groups(df, xci_file, value_col='CO_Mega', group_col='is_X', exclude_values=()):
+    """
+    Merge genes with `group_col` == 1 in `df` with a gene_name ->
+    classification table (`xci_file`, columns 'gene_name' and
+    'classification'), dropping any classification in `exclude_values` (e.g.
+    'No call'). Genes with `group_col` == 1 not found in the table are
+    excluded. Genes with `group_col` == 0 are labeled 'Autosome'. Returns
+    (groups_df, other_genes), where `groups_df` has columns
+    [value_col, 'classification'] ready for `plot_co_mega_by_group`, and
+    `other_genes` is the merged (post-exclusion) `group_col` == 1-only frame.
+    """
+    xci_df = pd.read_csv(xci_file, usecols=['gene_name', 'classification'])
+    other_genes = df.loc[df[group_col] == 1, ['gene_name', value_col]].merge(
+        xci_df, on='gene_name', how='inner'
+    )
+    if exclude_values:
+        other_genes = other_genes[~other_genes['classification'].isin(exclude_values)]
+
+    auto_genes = df.loc[df[group_col] == 0, [value_col]].copy()
+    auto_genes['classification'] = 'Autosome'
+    groups_df = pd.concat(
+        [auto_genes[[value_col, 'classification']], other_genes[[value_col, 'classification']]],
+        ignore_index=True
+    )
+    return groups_df, other_genes
 
 
 # ── Per-codon Pearson r vs. TE, with bootstrap SD ──────────────────────────
