@@ -12,9 +12,12 @@ Pipeline:
   2. Merge with human CO_Mega (analysis_codon/tables/co_mega_all_genes_human_liver.csv,
      on 'gene_id') and chicken CO_Mega (co_mega_all_genes_chicken_liver.csv,
      on 'gene_id'), keeping only genes with both. Compute
-     CO_Mega_normalized = CO_Mega_human / CO_Mega_chicken.
+     CO_Mega_normalized = CO_Mega_human / CO_Mega_chicken, and
+     CO_Mega_normalized_log = log(CO_Mega_normalized) for the (~78%) genes
+     with a positive normalized value (log is undefined for the rest, which
+     are excluded from the log-based plots below and reported).
   3. For each of the 3 CO_Mega measures (human liver, chicken liver ortholog,
-     normalized), grouped by the HUMAN gene's chromosome status:
+     log-normalized), grouped by the HUMAN gene's chromosome status:
        - Boxplot: Autosome vs X (2 groups), like co_mega_boxplot_autosome_vs_X_*.png.
        - Boxplots by XCI category (Gylemo and Neha classifications, each
          'full' [Autosome, Xi-silent, Xi-expressed, NPX-NPY, PAR1, PAR2] and
@@ -22,6 +25,9 @@ Pipeline:
          co_mega_boxplot_XCI_categories_full_Gylemo_human_liver.png.
      All boxplots show n, mean, and pairwise Mann-Whitney U p-values
      (scientific notation via `.3g`) in a legend.
+  4. For the log-normalized measure only, the same 5 comparisons (Autosome
+     vs X, + XCI full/reduced x Gylemo/Neha) are additionally plotted as
+     empirical CDFs (same p-values, n, and mean, shown in the plot legend).
 
 All outputs (restricted to genes with a human-chicken 1:1 ortholog) are
 saved under dedicated `human_chicken_comparison` subfolders of `figures/`
@@ -33,7 +39,10 @@ import os
 import pandas as pd
 import numpy as np
 
-from co_mega_common import plot_co_mega_boxplot, plot_co_mega_by_group, build_xci_groups
+from co_mega_common import (
+    plot_co_mega_boxplot, plot_co_mega_by_group, build_xci_groups,
+    plot_co_mega_cdf, plot_co_mega_cdf_by_group,
+)
 
 BASE_DIR       = "/lab/solexa_page/xueqi/analysis_codon"
 ORTHOLOG_FILE  = "/lab/solexa_page/xueqi/general/genes_1to1_ortholog_human_chicken/tables/human_chicken_one2one_orthologs.csv"
@@ -44,11 +53,14 @@ XCI_FILE_NEHA   = "/lab/solexa_page/xueqi/general/genes_XCI_Neha/tables/chrX_gen
 TABLE_DIR = os.path.join(BASE_DIR, "tables/human_chicken_comparison")
 FIG_DIR   = os.path.join(BASE_DIR, "figures/human_chicken_comparison")
 
-# (value column in the merged ortholog df, filename/description suffix, display label)
+XCI_FULL_ORDER    = ['Autosome', 'Xi-silent', 'Xi-expressed', 'NPX-NPY', 'PAR1', 'PAR2']
+XCI_REDUCED_ORDER = ['Autosome', 'Xi-silent', 'Xi-expressed']
+
+# (value column, filename/description suffix, display label, y/x-axis label, also make CDF plots)
 VALUE_COLUMNS = [
-    ('CO_Mega_human',      'human_liver',   'Human liver CO_Mega'),
-    ('CO_Mega_chicken',    'chicken_liver', "Human's chicken-ortholog liver CO_Mega"),
-    ('CO_Mega_normalized', 'normalized',    'Normalized CO_Mega (human / chicken)'),
+    ('CO_Mega_human',          'human_liver',   'Human liver CO_Mega',                        'CO_Mega',                  False),
+    ('CO_Mega_chicken',        'chicken_liver', "Human's chicken-ortholog liver CO_Mega",       'CO_Mega',                  False),
+    ('CO_Mega_normalized_log', 'normalized',    'log(Normalized CO_Mega) (human / chicken)',    'log(Normalized CO_Mega)',  True),
 ]
 XCI_SOURCES = [
     ('Gylemo', XCI_FILE_GYLEMO, ()),
@@ -88,29 +100,48 @@ def load_ortholog_co_mega():
     n_auto = (merged['is_X'] == 0).sum()
     n_x = (merged['is_X'] == 1).sum()
     print(f"  {n_auto:,} autosomal, {n_x:,} X-linked orthologous genes.")
+
+    n_nonpositive = (merged['CO_Mega_normalized'] <= 0).sum()
+    merged['CO_Mega_normalized_log'] = np.where(
+        merged['CO_Mega_normalized'] > 0, np.log(merged['CO_Mega_normalized']), np.nan)
+    print(f"  {n_nonpositive:,} of {len(merged):,} genes have a non-positive normalized CO_Mega "
+          f"(log undefined); excluded from the log(normalized CO_Mega) plots.")
     return merged
 
 
-def plot_xci_boxplots_by_value(df, value_col, value_suffix, value_label, source_label, xci_file, exclude_values):
+def plot_xci_boxplots_by_value(df, value_col, value_suffix, value_label, ylabel, also_cdf,
+                                source_label, xci_file, exclude_values):
     groups_df, other_genes = build_xci_groups(df, xci_file, value_col=value_col, exclude_values=exclude_values)
     n_x_total = (df['is_X'] == 1).sum()
     print(f"  [{value_label}, {source_label}] {len(other_genes):,} of {n_x_total:,} X-linked orthologous "
           f"genes have a defined XCI status ({n_x_total - len(other_genes):,} excluded).")
 
     plot_co_mega_by_group(
-        groups_df, value_col, 'classification',
-        ['Autosome', 'Xi-silent', 'Xi-expressed', 'NPX-NPY', 'PAR1', 'PAR2'],
+        groups_df, value_col, 'classification', XCI_FULL_ORDER,
         f'{value_label} by XCI category ({source_label}, human-chicken orthologs)',
         fig(f"co_mega_boxplot_XCI_categories_full_{source_label}_{value_suffix}"),
-        out_csv=tbl(f"co_mega_XCI_categories_full_stats_{source_label}_{value_suffix}")
+        out_csv=tbl(f"co_mega_XCI_categories_full_stats_{source_label}_{value_suffix}"),
+        ylabel=ylabel
     )
     plot_co_mega_by_group(
-        groups_df, value_col, 'classification',
-        ['Autosome', 'Xi-silent', 'Xi-expressed'],
+        groups_df, value_col, 'classification', XCI_REDUCED_ORDER,
         f'{value_label}: Autosome vs Xi-silent vs Xi-expressed ({source_label}, human-chicken orthologs)',
         fig(f"co_mega_boxplot_XCI_categories_reduced_{source_label}_{value_suffix}"),
-        out_csv=tbl(f"co_mega_XCI_categories_reduced_stats_{source_label}_{value_suffix}")
+        out_csv=tbl(f"co_mega_XCI_categories_reduced_stats_{source_label}_{value_suffix}"),
+        ylabel=ylabel
     )
+
+    if also_cdf:
+        plot_co_mega_cdf_by_group(
+            groups_df, value_col, 'classification', XCI_FULL_ORDER, ylabel,
+            f'{value_label} by XCI category ({source_label}, human-chicken orthologs)',
+            fig(f"co_mega_cdf_XCI_categories_full_{source_label}_{value_suffix}")
+        )
+        plot_co_mega_cdf_by_group(
+            groups_df, value_col, 'classification', XCI_REDUCED_ORDER, ylabel,
+            f'{value_label}: Autosome vs Xi-silent vs Xi-expressed ({source_label}, human-chicken orthologs)',
+            fig(f"co_mega_cdf_XCI_categories_reduced_{source_label}_{value_suffix}")
+        )
 
 
 def main():
@@ -125,18 +156,23 @@ def main():
     merged.to_csv(out_merged, index=False)
     print(f"  Saved merged ortholog CO_Mega table to {out_merged}")
 
-    print("\n[2] Boxplots: Autosome vs X (human classification), for each CO_Mega measure...")
-    for value_col, value_suffix, value_label in VALUE_COLUMNS:
+    print("\n[2] Boxplots (+ CDFs for log-normalized): Autosome vs X (human classification)...")
+    for value_col, value_suffix, value_label, ylabel, also_cdf in VALUE_COLUMNS:
+        title = f'{value_label}: X-linked vs Autosomal genes\n(human-chicken 1:1 orthologs)'
         plot_co_mega_boxplot(
-            merged, value_col, 'is_X', 'X chromosome',
-            f'{value_label}: X-linked vs Autosomal genes\n(human-chicken 1:1 orthologs)',
-            fig(f"co_mega_boxplot_autosome_vs_X_{value_suffix}")
+            merged, value_col, 'is_X', 'X chromosome', title,
+            fig(f"co_mega_boxplot_autosome_vs_X_{value_suffix}"), ylabel=ylabel
         )
+        if also_cdf:
+            plot_co_mega_cdf(
+                merged, value_col, 'is_X', 'X chromosome', ylabel, title,
+                fig(f"co_mega_cdf_autosome_vs_X_{value_suffix}")
+            )
 
-    print("\n[3] Boxplots by XCI category (Gylemo / Neha), for each CO_Mega measure...")
-    for value_col, value_suffix, value_label in VALUE_COLUMNS:
+    print("\n[3] Boxplots (+ CDFs for log-normalized) by XCI category (Gylemo / Neha)...")
+    for value_col, value_suffix, value_label, ylabel, also_cdf in VALUE_COLUMNS:
         for source_label, xci_file, exclude_values in XCI_SOURCES:
-            plot_xci_boxplots_by_value(merged, value_col, value_suffix, value_label,
+            plot_xci_boxplots_by_value(merged, value_col, value_suffix, value_label, ylabel, also_cdf,
                                         source_label, xci_file, exclude_values)
 
     print("\n=== Done ===")

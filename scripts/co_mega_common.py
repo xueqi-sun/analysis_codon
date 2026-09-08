@@ -167,8 +167,30 @@ def plot_actual_vs_predicted(actual, predicted, xlabel, ylabel, title, r, p_str,
     print(f"  Saved: {output_file}  (R = {r:.4f}, R^2 = {r_squared:.4f}, p = {p_str}, n = {len(actual):,})")
 
 
+def _wrap_title(title, width=52):
+    return "\n".join(textwrap.fill(line, width=width) for line in title.split("\n"))
+
+
+def _nonempty_groups(df, value_col, group_col, group_order):
+    """
+    For each group in `group_order` present in `df[group_col]`, return its
+    non-NaN `value_col` values, dropping any group left with 0 observations
+    (e.g. after an upstream transform like log() made every value in that
+    group undefined).
+    """
+    groups, data = [], []
+    for g in group_order:
+        if g not in set(df[group_col]):
+            continue
+        d = df.loc[df[group_col] == g, value_col].dropna()
+        if len(d) > 0:
+            groups.append(g)
+            data.append(d)
+    return groups, data
+
+
 # ── Plot: two-group (autosome vs. sex chromosome) boxplot ──────────────────
-def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_file):
+def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_file, ylabel='CO_Mega'):
     """
     Boxplot comparing `value_col` between genes with `group_col` == 0
     ('Autosome') and `group_col` == 1 (labeled `group1_label`, e.g. 'X
@@ -193,9 +215,8 @@ def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_f
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
 
-    wrapped_title = "\n".join(textwrap.fill(line, width=52) for line in title.split("\n"))
-    ax.set_ylabel('CO_Mega')
-    ax.set_title(wrapped_title, fontweight='bold', fontsize=12)
+    ax.set_ylabel(ylabel)
+    ax.set_title(_wrap_title(title), fontweight='bold', fontsize=12)
     ax.annotate(f"Mann-Whitney U\np = {pval:.3g}",
                 xy=(0.5, 0.98), xycoords='axes fraction', va='top', ha='center', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
@@ -210,7 +231,7 @@ def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_f
 GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
 
 
-def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None):
+def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None, ylabel=None):
     """
     Boxplot of `value_col` across the groups in `group_order` that are
     actually present in `df[group_col]` (missing ones are skipped). Prints
@@ -218,8 +239,7 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
     pairwise comparison of groups. If `out_csv` is given, saves a table with
     n / mean per group and the p-value for every pairwise comparison.
     """
-    groups = [g for g in group_order if g in set(df[group_col])]
-    data = [df.loc[df[group_col] == g, value_col].dropna() for g in groups]
+    groups, data = _nonempty_groups(df, value_col, group_col, group_order)
     labels = [f'{g}\n(n={len(d):,})\n(mean={d.mean():.3f})' for g, d in zip(groups, data)]
 
     pairwise = []
@@ -237,8 +257,8 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
 
-    ax.set_ylabel(value_col)
-    ax.set_title(title, fontweight='bold')
+    ax.set_ylabel(ylabel if ylabel is not None else value_col)
+    ax.set_title(_wrap_title(title), fontweight='bold')
 
     legend_text = "Mann-Whitney U p-values:\n" + "\n".join(
         f"{g1} vs {g2}: p = {pval:.3g}" for g1, g2, pval in pairwise
@@ -267,6 +287,90 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
     if out_csv is not None:
         pd.DataFrame(stats_rows).to_csv(out_csv, index=False)
         print(f"  Saved pairwise stats to {out_csv}")
+
+
+# ── Plot: two-group / multi-group CDF ───────────────────────────────────────
+def _ecdf(values):
+    x = np.sort(np.asarray(values, dtype=float))
+    y = np.arange(1, len(x) + 1) / len(x)
+    return x, y
+
+
+def plot_co_mega_cdf(df, value_col, group_col, group1_label, xlabel, title, output_file):
+    """
+    Empirical-CDF plot comparing `value_col` between genes with `group_col`
+    == 0 ('Autosome') and `group_col` == 1 (labeled `group1_label`), with a
+    Mann-Whitney U p-value annotated (scientific notation). Each group's
+    legend entry shows n and mean.
+    """
+    autosome = df.loc[df[group_col] == 0, value_col].dropna()
+    other = df.loc[df[group_col] == 1, value_col].dropna()
+    pval = stats.mannwhitneyu(autosome, other, alternative='two-sided').pvalue
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for data, label_base, color in [(autosome, 'Autosome', '#377EB8'), (other, group1_label, '#E41A1C')]:
+        x, y = _ecdf(data)
+        ax.step(x, y, where='post', color=color, linewidth=1.8,
+                label=f'{label_base} (n={len(data):,}, mean={data.mean():.3f})')
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('Cumulative probability')
+    ax.set_title(_wrap_title(title), fontweight='bold', fontsize=12)
+    ax.legend(loc='lower right', fontsize=9)
+    ax.annotate(f"Mann-Whitney U\np = {pval:.3g}",
+                xy=(0.02, 0.98), xycoords='axes fraction', va='top', ha='left', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}  (Mann-Whitney U p = {pval:.3g}, "
+          f"mean autosome = {autosome.mean():.3f}, mean {group1_label} = {other.mean():.3f})")
+
+
+def plot_co_mega_cdf_by_group(df, value_col, group_col, group_order, xlabel, title, output_file):
+    """
+    Empirical-CDF plot of `value_col` across the groups in `group_order`
+    that are actually present in `df[group_col]` (missing ones are
+    skipped), with every pairwise Mann-Whitney U p-value (scientific
+    notation) listed in a legend. Each group's line legend entry shows n
+    and mean.
+    """
+    groups, data = _nonempty_groups(df, value_col, group_col, group_order)
+
+    pairwise = []
+    for i in range(len(groups)):
+        for j in range(i + 1, len(groups)):
+            pval = stats.mannwhitneyu(data[i], data[j], alternative='two-sided').pvalue
+            pairwise.append((groups[i], groups[j], pval))
+
+    fig, ax = plt.subplots(figsize=(1.4 * len(groups) + 6, 6))
+    for g, d, color in zip(groups, data, GROUP_COLORS):
+        x, y = _ecdf(d)
+        ax.step(x, y, where='post', color=color, linewidth=1.8,
+                label=f'{g} (n={len(d):,}, mean={d.mean():.3f})')
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('Cumulative probability')
+    ax.set_title(_wrap_title(title), fontweight='bold')
+
+    line_legend = ax.legend(loc='lower right', fontsize=8)
+    legend_text = "Mann-Whitney U p-values:\n" + "\n".join(
+        f"{g1} vs {g2}: p = {pval:.3g}" for g1, g2, pval in pairwise
+    )
+    legend_handle = Line2D([], [], color='none', label=legend_text)
+    ax.legend(handles=[legend_handle], loc='upper left', bbox_to_anchor=(1.01, 1.0),
+              fontsize=7, handlelength=0, handletextpad=0, frameon=True, borderaxespad=0)
+    ax.add_artist(line_legend)
+
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
+
+    print(f"  Pairwise Mann-Whitney U p-values ({title}):")
+    for g1, g2, pval in pairwise:
+        i, j = groups.index(g1), groups.index(g2)
+        print(f"    {g1} (n={len(data[i]):,}) vs {g2} (n={len(data[j]):,}): p = {pval:.3g}")
 
 
 def build_xci_groups(df, xci_file, value_col='CO_Mega', group_col='is_X', exclude_values=()):
