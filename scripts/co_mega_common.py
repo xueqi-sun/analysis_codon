@@ -230,6 +230,28 @@ def plot_co_mega_boxplot(df, value_col, group_col, group1_label, title, output_f
 # ── Plot: multi-group (e.g. XCI-category) boxplot ───────────────────────────
 GROUP_COLORS = ['#377EB8', '#E41A1C', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33']
 
+# Fixed colors for specific, recurring group names (independent of their
+# position in `group_order`), so e.g. 'Xi-expressed' is always #00e0e8 and
+# 'Xi-silent' is always #ff7b7f wherever they appear.
+_NAMED_GROUP_COLORS = {
+    'Autosome': '#377EB8',
+    'Xi-silent': '#ff7b7f',
+    'Xi-expressed': '#00e0e8',
+    'X (defined XCI)': '#E41A1C',
+    'NPX-NPY': '#984EA3',
+    'PAR1': '#FF7F00',
+    'PAR2': '#FFFF33',
+}
+_FALLBACK_GROUP_COLORS = GROUP_COLORS
+
+
+def _group_colors(groups):
+    """Color for each group in `groups`: a fixed color for known names
+    (see `_NAMED_GROUP_COLORS`), else the next unused color from the
+    default `GROUP_COLORS` cycle."""
+    fallback = (c for c in _FALLBACK_GROUP_COLORS if c not in _NAMED_GROUP_COLORS.values())
+    return [_NAMED_GROUP_COLORS.get(g) or next(fallback, '#999999') for g in groups]
+
 
 def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_file, out_csv=None, ylabel=None):
     """
@@ -253,7 +275,7 @@ def plot_co_mega_by_group(df, value_col, group_col, group_order, title, output_f
         data, tick_labels=labels, patch_artist=True, widths=0.5, showfliers=True,
         flierprops=dict(marker='o', markersize=3, alpha=0.3, markeredgecolor='none')
     )
-    for patch, color in zip(bp['boxes'], GROUP_COLORS):
+    for patch, color in zip(bp['boxes'], _group_colors(groups)):
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
 
@@ -344,7 +366,7 @@ def plot_co_mega_cdf_by_group(df, value_col, group_col, group_order, xlabel, tit
             pairwise.append((groups[i], groups[j], pval))
 
     fig, ax = plt.subplots(figsize=(1.4 * len(groups) + 6, 6))
-    for g, d, color in zip(groups, data, GROUP_COLORS):
+    for g, d, color in zip(groups, data, _group_colors(groups)):
         x, y = _ecdf(d)
         ax.step(x, y, where='post', color=color, linewidth=1.8,
                 label=f'{g} (n={len(d):,}, mean={d.mean():.3f})')
@@ -371,6 +393,118 @@ def plot_co_mega_cdf_by_group(df, value_col, group_col, group_order, xlabel, tit
     for g1, g2, pval in pairwise:
         i, j = groups.index(g1), groups.index(g2)
         print(f"    {g1} (n={len(data[i]):,}) vs {g2} (n={len(data[j]):,}): p = {pval:.3g}")
+
+
+# ── Plot: autosomes-split-by-chromosome vs. X ──────────────────────────────
+def _significance_stars(p):
+    if p < 0.001:
+        return '***'
+    elif p < 0.01:
+        return '**'
+    elif p < 0.05:
+        return '*'
+    return ''
+
+
+def plot_co_mega_boxplot_by_chromosome(df, value_col, chrom_col, autosome_order, title, output_file, out_csv,
+                                        ylabel=None, x_value='X', x_label='X chromosome',
+                                        autosome_color='#377EB8', x_color='#E41A1C'):
+    """
+    Boxplot of `value_col`, with one box per autosome in `autosome_order`
+    (matched against `df[chrom_col]`, all colored `autosome_color`) plus
+    one (colored `x_color`) box for the X-chromosome group
+    (`df[chrom_col] == x_value`). Each autosome's Mann-Whitney U p-value vs. the X group is computed and
+    annotated on the plot as significance asterisks
+    (* p<0.05, ** p<0.01, *** p<0.001), and saved (with n, mean) to
+    `out_csv`.
+    """
+    groups, data = _nonempty_groups(df, value_col, chrom_col, list(autosome_order) + [x_value])
+    x_idx = groups.index(x_value)
+    x_data = data[x_idx]
+
+    pvals = []
+    for g, d in zip(groups, data):
+        if g == x_value:
+            pvals.append(np.nan)
+        else:
+            pvals.append(stats.mannwhitneyu(d, x_data, alternative='two-sided').pvalue)
+
+    labels = [x_label if g == x_value else g for g in groups]
+    colors = [x_color if g == x_value else autosome_color for g in groups]
+
+    fig, ax = plt.subplots(figsize=(0.55 * len(groups) + 3, 6))
+    bp = ax.boxplot(data, tick_labels=labels, patch_artist=True, widths=0.6, showfliers=True,
+                     flierprops=dict(marker='o', markersize=2, alpha=0.25, markeredgecolor='none'))
+    for patch, color in zip(bp['boxes'], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+    for i, (g, d, p) in enumerate(zip(groups, data, pvals)):
+        stars = '' if np.isnan(p) else _significance_stars(p)
+        if stars:
+            ax.text(i + 1, d.max(), stars, ha='center', va='bottom', fontsize=11, fontweight='bold')
+
+    ax.set_xlabel('Chromosome')
+    ax.set_ylabel(ylabel if ylabel is not None else value_col)
+    ax.set_title(_wrap_title(title), fontweight='bold')
+    ax.annotate("* p<0.05  ** p<0.01  *** p<0.001\n(each autosome vs. X, Mann-Whitney U)",
+                xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=8,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
+
+    rows = []
+    for g, d, p in zip(groups, data, pvals):
+        rows.append({
+            'chromosome': x_label if g == x_value else g,
+            'n': len(d), 'mean': d.mean(), 'p_value_vs_X': p,
+            'significance': '' if np.isnan(p) else _significance_stars(p),
+        })
+    stats_df = pd.DataFrame(rows)
+    stats_df.to_csv(out_csv, index=False)
+    print(f"  Saved chromosome-vs-X stats to {out_csv}")
+    return stats_df
+
+
+def plot_co_mega_cdf_by_chromosome(df, value_col, chrom_col, autosome_order, xlabel, title, output_file,
+                                    x_value='X', x_label='X chromosome',
+                                    autosome_color='#377EB8', x_color='#E41A1C'):
+    """
+    Empirical-CDF plot of `value_col`, with one curve (colored
+    `autosome_color`) per autosome in `autosome_order` plus one curve
+    (colored `x_color`) for the X-chromosome group. The legend shows a
+    single proxy entry for the autosome curves plus the X group's n/mean,
+    rather than one legend line per autosome.
+    """
+    groups, data = _nonempty_groups(df, value_col, chrom_col, list(autosome_order) + [x_value])
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    n_auto_curves, n_auto_genes, x_entry = 0, 0, None
+    for g, d in zip(groups, data):
+        if g == x_value:
+            ax.step(*_ecdf(d), where='post', color=x_color, linewidth=2.0, zorder=3)
+            x_entry = f'{x_label} (n={len(d):,}, mean={d.mean():.3f})'
+        else:
+            ax.step(*_ecdf(d), where='post', color=autosome_color, linewidth=1.0, alpha=0.7, zorder=2)
+            n_auto_curves += 1
+            n_auto_genes += len(d)
+
+    handles = [
+        Line2D([0], [0], color=autosome_color, linewidth=1.5,
+               label=f'Autosomes, per chromosome ({n_auto_curves} curves, {n_auto_genes:,} genes)'),
+        Line2D([0], [0], color=x_color, linewidth=2.0, label=x_entry),
+    ]
+    ax.legend(handles=handles, loc='lower right', fontsize=8)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('Cumulative probability')
+    ax.set_title(_wrap_title(title), fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150)
+    plt.close()
+    print(f"  Saved: {output_file}")
 
 
 def build_xci_groups(df, xci_file, value_col='CO_Mega', group_col='is_X', exclude_values=()):
