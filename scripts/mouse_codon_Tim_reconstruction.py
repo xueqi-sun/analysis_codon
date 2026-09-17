@@ -50,7 +50,7 @@ from co_mega import SENSE_CODONS
 from co_mega_common import (
     fit_co_mega_te_model, save_coefficient_table, bootstrap_codon_pearson_r,
     plot_codon_pearson_r_barplot, ordinary_codon_pearson_r, plot_codon_pearson_r_barplot_ci,
-    plot_pearson_r_comparison_scatter,
+    plot_pearson_r_comparison_scatter, plot_actual_vs_predicted, precise_pvalue_str,
 )
 from mouse_codon_frequency_comparison import load_tim_codon_frequencies, convert_old_to_new_id
 
@@ -60,10 +60,10 @@ MART_FILE      = os.path.join(BASE_DIR, "data/refseq_to_ensemble_mouse_mart_expo
 TABLE_DIR      = os.path.join(BASE_DIR, "tables/testing_Tim")
 FIG_DIR        = os.path.join(BASE_DIR, "figures/testing_Tim")
 
-# -- Tim's mouse cortical-culture TE table (disabled; see main()) --
-# TIM_TE_FILE_CORTICAL = os.path.join(BASE_DIR, "data/Tim_data_TE_mouse_corticalculture.csv")
-# SUFFIX_CORTICAL       = "Tim_mouse_corticalculture"
-# TISSUE_LABEL_CORTICAL = "Tim's mouse cortical culture"
+# -- Tim's mouse cortical-culture TE table --
+TIM_TE_FILE_CORTICAL = os.path.join(BASE_DIR, "data/Tim_data_TE_mouse_corticalculture.csv")
+SUFFIX_CORTICAL       = "Tim_mouse_corticalculture"
+TISSUE_LABEL_CORTICAL = "Tim's mouse cortical culture"
 
 # -- Tim's mouse liver TE table (active) --
 TIM_TE_FILE_LIVER = os.path.join(BASE_DIR, "data/Tim_data_TE_mouse_liver.csv")
@@ -117,6 +117,15 @@ def run_te_analysis(tim_codon_df, te_file, suffix, tissue_label):
     print(f"  R^2 = {model.rsquared:.4f}   Adjusted R^2 = {model.rsquared_adj:.4f}   n = {int(model.nobs)}")
     out_coef = tbl(f"co_mega_model_coefficients_{suffix}")
     save_coefficient_table(coef, model, SENSE_CODONS, out_coef)
+
+    r_train, _ = stats.pearsonr(merged['TE_mean'], model.fittedvalues)
+    p_train_str = precise_pvalue_str(r_train, len(merged))
+    plot_actual_vs_predicted(
+        merged['TE_mean'], model.fittedvalues,
+        f'Actual TE (log10.TR, {tissue_label})', 'Fitted TE (OLS model)',
+        f'TE ~ codon frequencies: Actual vs. Fitted\n({tissue_label})',
+        r_train, p_train_str, fig(f"co_mega_regression_fit_train_{suffix}")
+    )
 
     print("\n[5a] Per-codon Pearson r with TE (bootstrap SD)...")
     r_df_boot = bootstrap_codon_pearson_r(merged[SENSE_CODONS], merged['TE_mean'], SENSE_CODONS)
@@ -189,10 +198,10 @@ def main():
     tim_codon_df = load_tim_codon_frequencies(TIM_CODON_FILE)
     tim_codon_df = convert_old_to_new_id(tim_codon_df, MART_FILE)
 
-    # -- Tim's mouse cortical-culture TE data (disabled) --
-    # run_te_analysis(tim_codon_df, TIM_TE_FILE_CORTICAL, SUFFIX_CORTICAL, TISSUE_LABEL_CORTICAL)
+    # -- Tim's mouse cortical-culture TE data --
+    run_te_analysis(tim_codon_df, TIM_TE_FILE_CORTICAL, SUFFIX_CORTICAL, TISSUE_LABEL_CORTICAL)
 
-    # -- Tim's mouse liver TE data (active) --
+    # -- Tim's mouse liver TE data --
     run_te_analysis(tim_codon_df, TIM_TE_FILE_LIVER, SUFFIX_LIVER, TISSUE_LABEL_LIVER)
 
     print("\n=== Done ===")

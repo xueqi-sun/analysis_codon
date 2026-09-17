@@ -134,28 +134,30 @@ def save_coefficient_table(coef, model, codons, out_file):
     return coef_df
 
 
-# ── Plot: actual vs. predicted / CO_Mega scatter ────────────────────────────
-def plot_actual_vs_predicted(actual, predicted, xlabel, ylabel, title, r, p_str, output_file):
+# ── Plot: predicted vs. actual / CO_Mega scatter ────────────────────────────
+def plot_actual_vs_predicted(actual, predicted, actual_label, predicted_label, title, r, p_str, output_file):
     """
-    Scatter of some 'actual' quantity vs. a model-derived 'predicted' one
-    (e.g. actual TE_mean vs. fitted TE_mean, or actual TE_mean vs. CO_Mega),
-    with a y = x reference line, equal axis scales, and R / R^2 / p / n
-    annotated.
+    Scatter of a model-derived 'predicted' quantity (x-axis) vs. the
+    corresponding 'actual' quantity (y-axis) (e.g. predicted/fitted TE_mean
+    or CO_Mega on x, actual TE_mean on y), with a y = x reference line,
+    equal axis scales, and R / R^2 / p (scientific notation) / n annotated.
+    R and R^2 are unaffected by which quantity is plotted on which axis
+    (Pearson correlation is symmetric).
     """
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     r_squared = r ** 2
 
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(actual, predicted, s=8, alpha=0.3, color='#377EB8', edgecolor='none')
+    ax.scatter(predicted, actual, s=8, alpha=0.3, color='#377EB8', edgecolor='none')
     lims = [min(actual.min(), predicted.min()), max(actual.max(), predicted.max())]
     ax.plot(lims, lims, color='gray', linestyle='--', linewidth=1, label='y = x')
     ax.set_xlim(lims)
     ax.set_ylim(lims)
     ax.set_aspect('equal', adjustable='box')
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(predicted_label)
+    ax.set_ylabel(actual_label)
     ax.set_title(title, fontweight='bold')
     ax.annotate(f"R = {r:.4f}\nR\u00b2 = {r_squared:.4f}\np = {p_str}\nn = {len(actual):,}",
                 xy=(0.05, 0.95), xycoords='axes fraction', va='top', ha='left', fontsize=9,
