@@ -159,7 +159,7 @@ def plot_actual_vs_predicted(actual, predicted, actual_label, predicted_label, t
     ax.set_xlabel(predicted_label)
     ax.set_ylabel(actual_label)
     ax.set_title(title, fontweight='bold')
-    ax.annotate(f"R = {r:.4f}\nR\u00b2 = {r_squared:.4f}\np = {p_str}\nn = {len(actual):,}",
+    ax.annotate(f"R = {r:.4f}\nR\u00b2 = {r_squared:.4f}\nn = {len(actual):,}",
                 xy=(0.05, 0.95), xycoords='axes fraction', va='top', ha='left', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
     ax.legend(loc='lower right', fontsize=8)
