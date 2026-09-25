@@ -29,16 +29,16 @@ Pipeline:
        - ordinary: the same point estimate + an analytic Fisher-z
          confidence interval (no resampling), suffixed `_ordinary`.
   5. For each of our own CO_Mega fits (human liver, chicken liver, mouse
-     liver; analysis_codon/tables/co_mega_codon_pearson_r_*.csv), scatter
-     that fit's per-codon Pearson r against Tim's (both the bootstrap and
-     ordinary versions), with a y = x reference line, and report how well
-     the two agree (Pearson R, Spearman rho).
+     liver; analysis_codon/tables/{human,chicken,mouse}/co_mega_codon_pearson_r_*.csv),
+     scatter that fit's per-codon Pearson r against Tim's (both the
+     bootstrap and ordinary versions), with a y = x reference line, and
+     report how well the two agree (Pearson R, Spearman rho).
 
 This is run per Tim TE table (see `main()` -- currently only mouse liver is
 active; the mouse cortical-culture run is commented out). All outputs are
-saved under a dedicated `testing_Tim` subfolder of `tables/` and `figures/`,
-suffixed `_Tim_mouse_corticalculture` or `_Tim_mouse_liver` (+ `_bootstrap` /
-`_ordinary` for the per-codon-r-dependent outputs).
+saved under a dedicated `mouse/testing_Tim` subfolder of `tables/` and
+`figures/`, suffixed `_Tim_mouse_corticalculture` or `_Tim_mouse_liver`
+(+ `_bootstrap` / `_ordinary` for the per-codon-r-dependent outputs).
 """
 
 import os
@@ -49,16 +49,18 @@ from scipy import stats
 from co_mega import SENSE_CODONS
 from co_mega_common import (
     fit_co_mega_te_model, save_coefficient_table, bootstrap_codon_pearson_r,
-    plot_codon_pearson_r_barplot, ordinary_codon_pearson_r, plot_codon_pearson_r_barplot_ci,
-    plot_pearson_r_comparison_scatter, plot_actual_vs_predicted, precise_pvalue_str,
+    bootstrap_codon_spearman_rho, plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot,
+    ordinary_codon_pearson_r, ordinary_codon_spearman_rho, plot_codon_pearson_r_barplot_ci,
+    plot_codon_spearman_rho_barplot_ci, plot_pearson_r_comparison_scatter, plot_actual_vs_predicted,
+    plot_actual_vs_predicted_spearman, precise_pvalue_str, run_regression_diagnostics,
 )
 from mouse_codon_frequency_comparison import load_tim_codon_frequencies, convert_old_to_new_id
 
 BASE_DIR       = "/lab/solexa_page/xueqi/analysis_codon"
 TIM_CODON_FILE = os.path.join(BASE_DIR, "data/LightStimPalAnnotations20211019_CDS_CodonFrequencies.csv")
 MART_FILE      = os.path.join(BASE_DIR, "data/refseq_to_ensemble_mouse_mart_export20200909.csv")
-TABLE_DIR      = os.path.join(BASE_DIR, "tables/testing_Tim")
-FIG_DIR        = os.path.join(BASE_DIR, "figures/testing_Tim")
+TABLE_DIR      = os.path.join(BASE_DIR, "tables/mouse/testing_Tim")
+FIG_DIR        = os.path.join(BASE_DIR, "figures/mouse/testing_Tim")
 
 # -- Tim's mouse cortical-culture TE table --
 TIM_TE_FILE_CORTICAL = os.path.join(BASE_DIR, "data/Tim_data_TE_mouse_corticalculture.csv")
@@ -72,9 +74,9 @@ TISSUE_LABEL_LIVER = "Tim's mouse liver"
 
 # Other species/tissues' per-codon Pearson r tables to compare against.
 OTHER_PEARSON_R_FILES = {
-    'Human liver':   os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_human_liver.csv"),
-    'Chicken liver': os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_chicken_liver.csv"),
-    'Mouse liver':   os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_mouse.csv"),
+    'Human liver':   os.path.join(BASE_DIR, "tables/human/co_mega_codon_pearson_r_human_liver.csv"),
+    'Chicken liver': os.path.join(BASE_DIR, "tables/chicken/co_mega_codon_pearson_r_chicken_liver.csv"),
+    'Mouse liver':   os.path.join(BASE_DIR, "tables/mouse/co_mega_codon_pearson_r_mouse.csv"),
 }
 
 
@@ -119,12 +121,30 @@ def run_te_analysis(tim_codon_df, te_file, suffix, tissue_label):
     save_coefficient_table(coef, model, SENSE_CODONS, out_coef)
 
     r_train, _ = stats.pearsonr(merged['TE_mean'], model.fittedvalues)
+    rho_train, _ = stats.spearmanr(merged['TE_mean'], model.fittedvalues)
     p_train_str = precise_pvalue_str(r_train, len(merged))
+    p_train_rho_str = precise_pvalue_str(rho_train, len(merged))
     plot_actual_vs_predicted(
         merged['TE_mean'], model.fittedvalues,
         f'Actual TE (log10.TR, {tissue_label})', 'Fitted TE (OLS model)',
         f'TE ~ codon frequencies: Actual vs. Fitted\n({tissue_label})',
         r_train, p_train_str, fig(f"co_mega_regression_fit_train_{suffix}")
+    )
+    plot_actual_vs_predicted_spearman(
+        merged['TE_mean'], model.fittedvalues,
+        f'Actual TE (log10.TR, {tissue_label})', 'Fitted TE (OLS model)',
+        f'TE ~ codon frequencies: Actual vs. Fitted\n({tissue_label})',
+        rho_train, p_train_rho_str, fig(f"co_mega_regression_fit_train_{suffix}_spearman")
+    )
+
+    print("\n[4b] Regression diagnostics (linearity, homoscedasticity, normality)...")
+    run_regression_diagnostics(
+        model, merged['TE_mean'], tissue_label,
+        fig(f"co_mega_regression_diagnostics_te_histogram_{suffix}"),
+        fig(f"co_mega_regression_diagnostics_residual_histogram_{suffix}"),
+        fig(f"co_mega_regression_diagnostics_residual_qq_{suffix}"),
+        fig(f"co_mega_regression_diagnostics_residual_vs_fitted_{suffix}"),
+        tbl(f"co_mega_regression_diagnostics_stats_{suffix}"),
     )
 
     print("\n[5a] Per-codon Pearson r with TE (bootstrap SD)...")
@@ -137,6 +157,15 @@ def run_te_analysis(tim_codon_df, te_file, suffix, tissue_label):
         fig(f"co_mega_codon_pearson_r_barplot_{suffix}_bootstrap")
     )
 
+    rho_df_boot = bootstrap_codon_spearman_rho(merged[SENSE_CODONS], merged['TE_mean'], SENSE_CODONS)
+    out_codon_rho_boot = tbl(f"co_mega_codon_spearman_rho_{suffix}_bootstrap")
+    rho_df_boot.to_csv(out_codon_rho_boot, index=False)
+    print(f"  Saved per-codon Spearman rho (+ bootstrap SD) to {out_codon_rho_boot}")
+    plot_codon_spearman_rho_barplot(
+        rho_df_boot, f'Spearman rho between codon frequency and TE, per codon\n({tissue_label}, bootstrap SD)',
+        fig(f"co_mega_codon_pearson_r_barplot_{suffix}_bootstrap_spearman")
+    )
+
     print("\n[5b] Per-codon Pearson r with TE (ordinary, analytic Fisher-z CI)...")
     r_df_ord = ordinary_codon_pearson_r(merged[SENSE_CODONS], merged['TE_mean'], SENSE_CODONS)
     out_codon_r_ord = tbl(f"co_mega_codon_pearson_r_{suffix}_ordinary")
@@ -145,6 +174,15 @@ def run_te_analysis(tim_codon_df, te_file, suffix, tissue_label):
     plot_codon_pearson_r_barplot_ci(
         r_df_ord, f'Pearson R between codon frequency and TE, per codon\n({tissue_label}, ordinary, 95% CI)',
         fig(f"co_mega_codon_pearson_r_barplot_{suffix}_ordinary")
+    )
+
+    rho_df_ord = ordinary_codon_spearman_rho(merged[SENSE_CODONS], merged['TE_mean'], SENSE_CODONS)
+    out_codon_rho_ord = tbl(f"co_mega_codon_spearman_rho_{suffix}_ordinary")
+    rho_df_ord.to_csv(out_codon_rho_ord, index=False)
+    print(f"  Saved per-codon Spearman rho (+ 95% Fisher-z CI) to {out_codon_rho_ord}")
+    plot_codon_spearman_rho_barplot_ci(
+        rho_df_ord, f'Spearman rho between codon frequency and TE, per codon\n({tissue_label}, ordinary, 95% CI)',
+        fig(f"co_mega_codon_pearson_r_barplot_{suffix}_ordinary_spearman")
     )
 
     print(f"\n[6] Comparing {tissue_label}'s per-codon Pearson r with other species/tissues...")

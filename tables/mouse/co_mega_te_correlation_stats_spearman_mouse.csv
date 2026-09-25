@@ -1,0 +1,4 @@
+gene_set,n,spearman_rho,p_value
+All genes,12258,0.4062912237135561,1.295e-482
+Autosomal genes,11868,0.407241528255426,1.023e-469
+X-linked genes,374,0.3316012707750583,4.754e-11

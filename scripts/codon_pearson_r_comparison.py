@@ -13,10 +13,11 @@ Loads:
 mouse_codon_frequency_comparison.py, via
 co_mega_common.bootstrap_codon_pearson_r).
 
-Saves, for every pair of species/tissues:
-  analysis_codon/figures/codon_pearson_r_human_liver_vs_chicken_liver_bootstrap.png
-  analysis_codon/figures/codon_pearson_r_human_liver_vs_mouse_liver_bootstrap.png
-  analysis_codon/figures/codon_pearson_r_chicken_liver_vs_mouse_liver_bootstrap.png
+Saves, for every pair of species/tissues, under a dedicated
+`cross_species_comparison` subfolder of `figures/`:
+  analysis_codon/figures/cross_species_comparison/codon_pearson_r_human_liver_vs_chicken_liver_bootstrap.png
+  analysis_codon/figures/cross_species_comparison/codon_pearson_r_human_liver_vs_mouse_liver_bootstrap.png
+  analysis_codon/figures/cross_species_comparison/codon_pearson_r_chicken_liver_vs_mouse_liver_bootstrap.png
 """
 
 import os
@@ -28,14 +29,16 @@ from scipy import stats
 from co_mega_common import plot_pearson_r_comparison_scatter
 
 BASE_DIR = "/lab/solexa_page/xueqi/analysis_codon"
+FIG_DIR  = os.path.join(BASE_DIR, "figures/cross_species_comparison")
 PEARSON_R_FILES = {
-    'Human liver':   os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_human_liver.csv"),
-    'Chicken liver': os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_chicken_liver.csv"),
-    'Mouse liver':   os.path.join(BASE_DIR, "tables/co_mega_codon_pearson_r_mouse.csv"),
+    'Human liver':   os.path.join(BASE_DIR, "tables/human/co_mega_codon_pearson_r_human_liver.csv"),
+    'Chicken liver': os.path.join(BASE_DIR, "tables/chicken/co_mega_codon_pearson_r_chicken_liver.csv"),
+    'Mouse liver':   os.path.join(BASE_DIR, "tables/mouse/co_mega_codon_pearson_r_mouse.csv"),
 }
 
 
 def main():
+    os.makedirs(FIG_DIR, exist_ok=True)
     for y_label, x_label in combinations(PEARSON_R_FILES, 2):
         y_df = pd.read_csv(PEARSON_R_FILES[y_label])[['codon', 'pearson_r']].rename(columns={'pearson_r': 'pearson_r_y'})
         x_df = pd.read_csv(PEARSON_R_FILES[x_label])[['codon', 'pearson_r']].rename(columns={'pearson_r': 'pearson_r_x'})
@@ -48,7 +51,7 @@ def main():
 
         y_slug = y_label.lower().replace(' ', '_')
         x_slug = x_label.lower().replace(' ', '_')
-        out_fig = os.path.join(BASE_DIR, f"figures/codon_pearson_r_{y_slug}_vs_{x_slug}_bootstrap.png")
+        out_fig = os.path.join(FIG_DIR, f"codon_pearson_r_{y_slug}_vs_{x_slug}_bootstrap.png")
         plot_pearson_r_comparison_scatter(
             cmp_df, y_label, x_label, r_corr, p_corr, rho_corr, p_rho, out_fig
         )

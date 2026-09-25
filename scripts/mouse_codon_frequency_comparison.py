@@ -53,7 +53,9 @@ from co_mega import SENSE_CODONS, compute_co_mega
 from co_mega_common import (
     compute_codon_frequencies, parse_cds_fasta, precise_pvalue_str,
     fit_co_mega_te_model, save_coefficient_table, plot_actual_vs_predicted,
-    plot_co_mega_boxplot, bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot,
+    plot_actual_vs_predicted_spearman, plot_co_mega_boxplot, bootstrap_codon_pearson_r,
+    bootstrap_codon_spearman_rho, plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot,
+    run_regression_diagnostics,
 )
 
 BASE_DIR  = "/lab/solexa_page/xueqi/analysis_codon"
@@ -62,8 +64,8 @@ CDS_CSV   = os.path.join(BASE_DIR, "data/mouse_CDS_sequence.csv")
 TIM_FILE  = os.path.join(BASE_DIR, "data/LightStimPalAnnotations20211019_CDS_CodonFrequencies.csv")
 MART_FILE = os.path.join(BASE_DIR, "data/refseq_to_ensemble_mouse_mart_export20200909.csv")
 TE_FILE   = "/lab/solexa_page/xueqi/analysis_riboseq/tables/mouse_liver/mouse_te.csv"
-TABLE_DIR = os.path.join(BASE_DIR, "tables")
-FIG_DIR   = os.path.join(BASE_DIR, "figures")
+TABLE_DIR = os.path.join(BASE_DIR, "tables", "mouse")
+FIG_DIR   = os.path.join(BASE_DIR, "figures", "mouse")
 
 AUTOSOMES = [str(i) for i in range(1, 20)]  # mouse autosomes: chr 1-19
 
@@ -151,16 +153,22 @@ def compare_frequencies(biomart_df, tim_df, codons=SENSE_CODONS):
     per_codon = []
     for i, c in enumerate(codons):
         r, _ = stats.pearsonr(bio_vals[:, i], tim_vals[:, i])
+        rho, _ = stats.spearmanr(bio_vals[:, i], tim_vals[:, i])
         per_codon.append({
             'codon': c,
             'mean_freq_biomart': bio_vals[:, i].mean(),
             'mean_freq_tim': tim_vals[:, i].mean(),
             'pearson_r': r,
             'p_value': precise_pvalue_str(r, n_genes),
+            'spearman_rho': rho,
+            'p_value_spearman': precise_pvalue_str(rho, n_genes),
             'mean_abs_diff': np.abs(diff[:, i]).mean(),
             'rmse': np.sqrt((diff[:, i] ** 2).mean()),
         })
     per_codon_df = pd.DataFrame(per_codon)
+    per_codon_df_spearman = per_codon_df[
+        ['codon', 'mean_freq_biomart', 'mean_freq_tim', 'spearman_rho', 'p_value_spearman', 'mean_abs_diff', 'rmse']
+    ].rename(columns={'p_value_spearman': 'p_value'})
 
     merged['l1_diff'] = np.abs(diff).sum(axis=1)
     merged['rmse_diff'] = np.sqrt((diff ** 2).mean(axis=1))
@@ -168,12 +176,15 @@ def compare_frequencies(biomart_df, tim_df, codons=SENSE_CODONS):
 
     r_overall, _ = stats.pearsonr(bio_vals.flatten(), tim_vals.flatten())
     p_overall_str = precise_pvalue_str(r_overall, bio_vals.size)
+    rho_overall, _ = stats.spearmanr(bio_vals.flatten(), tim_vals.flatten())
+    p_rho_overall_str = precise_pvalue_str(rho_overall, bio_vals.size)
 
-    return merged, per_codon_df, per_gene_df, r_overall, p_overall_str, bio_vals, tim_vals
+    return (merged, per_codon_df, per_codon_df_spearman, per_gene_df,
+            r_overall, p_overall_str, rho_overall, p_rho_overall_str, bio_vals, tim_vals)
 
 
 # ── Plots ────────────────────────────────────────────────────────────────────
-def plot_overall_scatter(bio_vals, tim_vals, r_overall, p_overall_str, output_file):
+def _plot_overall_scatter_impl(bio_vals, tim_vals, stat_value, p_str, output_file, stat_symbol, stat_name):
     fig_, ax = plt.subplots(figsize=(7, 7))
     hb = ax.hexbin(bio_vals.flatten(), tim_vals.flatten(), gridsize=80, cmap='viridis',
                     bins='log', mincnt=1)
@@ -185,7 +196,7 @@ def plot_overall_scatter(bio_vals, tim_vals, r_overall, p_overall_str, output_fi
     ax.set_xlabel('Codon frequency (BioMart CDS)')
     ax.set_ylabel("Codon frequency (Tim's data)")
     ax.set_title('Mouse codon frequency: BioMart vs. Tim\n(all genes x all 61 sense codons)', fontweight='bold')
-    ax.annotate(f"R = {r_overall:.4f}\np = {p_overall_str}\nn = {bio_vals.size:,}",
+    ax.annotate(f"{stat_symbol} = {stat_value:.4f}\np = {p_str}\nn = {bio_vals.size:,}",
                 xy=(0.05, 0.95), xycoords='axes fraction', va='top', ha='left', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
     ax.legend(loc='lower right', fontsize=8)
@@ -194,18 +205,29 @@ def plot_overall_scatter(bio_vals, tim_vals, r_overall, p_overall_str, output_fi
     plt.tight_layout()
     plt.savefig(output_file, dpi=150)
     plt.close()
-    print(f"  Saved: {output_file}")
+    print(f"  Saved: {output_file}  ({stat_name} = {stat_value:.4f}, p = {p_str})")
 
 
-def plot_per_codon_r_barplot(per_codon_df, n_genes, output_file):
-    df_sorted = per_codon_df.sort_values('pearson_r', ascending=False).reset_index(drop=True)
+def plot_overall_scatter(bio_vals, tim_vals, r_overall, p_overall_str, output_file):
+    _plot_overall_scatter_impl(bio_vals, tim_vals, r_overall, p_overall_str, output_file,
+                                stat_symbol='R', stat_name='Pearson R')
+
+
+def plot_overall_scatter_spearman(bio_vals, tim_vals, rho_overall, p_rho_overall_str, output_file):
+    """Spearman-rho copy of `plot_overall_scatter`."""
+    _plot_overall_scatter_impl(bio_vals, tim_vals, rho_overall, p_rho_overall_str, output_file,
+                                stat_symbol='\u03c1', stat_name='Spearman rho')
+
+
+def _plot_per_codon_r_barplot_impl(per_codon_df, value_col, n_genes, output_file, ylabel, title):
+    df_sorted = per_codon_df.sort_values(value_col, ascending=False).reset_index(drop=True)
     fig_, ax = plt.subplots(figsize=(18, 6))
-    colors = ['#4DAF4A' if r >= 0 else '#E41A1C' for r in df_sorted['pearson_r']]
-    ax.bar(df_sorted['codon'], df_sorted['pearson_r'], color=colors, alpha=0.8)
+    colors = ['#4DAF4A' if v >= 0 else '#E41A1C' for v in df_sorted[value_col]]
+    ax.bar(df_sorted['codon'], df_sorted[value_col], color=colors, alpha=0.8)
     ax.axhline(0, color='black', linewidth=0.8)
     ax.set_xlabel('Codon')
-    ax.set_ylabel("Pearson R between BioMart and Tim's codon frequency")
-    ax.set_title("Mouse: agreement between BioMart and Tim's codon frequencies, per codon", fontweight='bold')
+    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontweight='bold')
     ax.set_xticks(range(len(df_sorted)))
     ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
     ax.annotate(f"n = {n_genes:,} genes", xy=(0.99, 0.98), xycoords='axes fraction',
@@ -215,6 +237,23 @@ def plot_per_codon_r_barplot(per_codon_df, n_genes, output_file):
     plt.savefig(output_file, dpi=150)
     plt.close()
     print(f"  Saved: {output_file}")
+
+
+def plot_per_codon_r_barplot(per_codon_df, n_genes, output_file):
+    _plot_per_codon_r_barplot_impl(
+        per_codon_df, 'pearson_r', n_genes, output_file,
+        "Pearson R between BioMart and Tim's codon frequency",
+        "Mouse: agreement between BioMart and Tim's codon frequencies, per codon"
+    )
+
+
+def plot_per_codon_rho_barplot(per_codon_df_spearman, n_genes, output_file):
+    """Spearman-rho copy of `plot_per_codon_r_barplot`."""
+    _plot_per_codon_r_barplot_impl(
+        per_codon_df_spearman, 'spearman_rho', n_genes, output_file,
+        "Spearman rho between BioMart and Tim's codon frequency",
+        "Mouse: agreement between BioMart and Tim's codon frequencies, per codon"
+    )
 
 
 def plot_mean_codon_scatter(per_codon_df, output_file):
@@ -295,12 +334,30 @@ def run_co_mega_te_analysis(biomart_df):
     save_coefficient_table(coef, model, SENSE_CODONS, out_coef)
 
     r_train, _ = stats.pearsonr(train['TE_mean'], model.fittedvalues)
+    rho_train, _ = stats.spearmanr(train['TE_mean'], model.fittedvalues)
     p_train_str = precise_pvalue_str(r_train, len(train))
+    p_train_rho_str = precise_pvalue_str(rho_train, len(train))
     plot_actual_vs_predicted(
         train['TE_mean'], model.fittedvalues,
         'Actual TE_mean (autosomal training genes)', 'Fitted TE_mean (OLS model)',
         f'Original regression: TE ~ codon frequencies\n(autosomal training genes, {TISSUE_LABEL})',
         r_train, p_train_str, fig("co_mega_regression_fit_train")
+    )
+    plot_actual_vs_predicted_spearman(
+        train['TE_mean'], model.fittedvalues,
+        'Actual TE_mean (autosomal training genes)', 'Fitted TE_mean (OLS model)',
+        f'Original regression: TE ~ codon frequencies\n(autosomal training genes, {TISSUE_LABEL})',
+        rho_train, p_train_rho_str, fig("co_mega_regression_fit_train_spearman")
+    )
+
+    print("\n[7b] Regression diagnostics (linearity, homoscedasticity, normality)...")
+    run_regression_diagnostics(
+        model, train['TE_mean'], f'autosomal training genes, {TISSUE_LABEL}',
+        fig("co_mega_regression_diagnostics_te_histogram"),
+        fig("co_mega_regression_diagnostics_residual_histogram"),
+        fig("co_mega_regression_diagnostics_residual_qq"),
+        fig("co_mega_regression_diagnostics_residual_vs_fitted"),
+        tbl("co_mega_regression_diagnostics_stats"),
     )
 
     print("\n[8] Computing CO_Mega for all genes (autosomes + X) and comparing to TE...")
@@ -314,16 +371,25 @@ def run_co_mega_te_analysis(biomart_df):
 
     auto_te = with_te[with_te['chromosome'].isin(AUTOSOMES)]
     r_auto, p_auto = stats.pearsonr(auto_te['CO_Mega'], auto_te['TE_mean'])
-    print(f"  Autosomal genes only (n={len(auto_te):,}, training set): Pearson r = {r_auto:.4f} (p = {p_auto:.3g})")
+    rho_auto, p_rho_auto = stats.spearmanr(auto_te['CO_Mega'], auto_te['TE_mean'])
+    print(f"  Autosomal genes only (n={len(auto_te):,}, training set): Pearson r = {r_auto:.4f} (p = {p_auto:.3g}), "
+          f"Spearman rho = {rho_auto:.4f} (p = {p_rho_auto:.3g})")
 
     x_te = with_te[with_te['chromosome'] == 'X']
-    r_x, p_x = stats.pearsonr(x_te['CO_Mega'], x_te['TE_mean']) if len(x_te) > 1 else (np.nan, np.nan)
     if len(x_te) > 1:
-        print(f"  X-linked genes only (n={len(x_te):,}, held out): Pearson r = {r_x:.4f} (p = {p_x:.3g})")
+        r_x, p_x = stats.pearsonr(x_te['CO_Mega'], x_te['TE_mean'])
+        rho_x, p_rho_x = stats.spearmanr(x_te['CO_Mega'], x_te['TE_mean'])
+        print(f"  X-linked genes only (n={len(x_te):,}, held out): Pearson r = {r_x:.4f} (p = {p_x:.3g}), "
+              f"Spearman rho = {rho_x:.4f} (p = {p_rho_x:.3g})")
+    else:
+        r_x, p_x, rho_x, p_rho_x = np.nan, np.nan, np.nan, np.nan
 
     p_all_str = precise_pvalue_str(r_all, len(with_te))
     p_auto_str = precise_pvalue_str(r_auto, len(auto_te))
     p_x_str = precise_pvalue_str(r_x, len(x_te)) if len(x_te) > 1 else np.nan
+    p_rho_all_str = precise_pvalue_str(rho_all, len(with_te))
+    p_rho_auto_str = precise_pvalue_str(rho_auto, len(auto_te))
+    p_rho_x_str = precise_pvalue_str(rho_x, len(x_te)) if len(x_te) > 1 else np.nan
 
     corr_stats = pd.DataFrame([
         {'gene_set': 'All genes', 'n': len(with_te), 'pearson_r': r_all, 'p_value': p_all_str},
@@ -334,16 +400,34 @@ def run_co_mega_te_analysis(biomart_df):
     corr_stats.to_csv(out_corr, index=False)
     print(f"  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to {out_corr}")
 
+    corr_stats_spearman = pd.DataFrame([
+        {'gene_set': 'All genes', 'n': len(with_te), 'spearman_rho': rho_all, 'p_value': p_rho_all_str},
+        {'gene_set': 'Autosomal genes', 'n': len(auto_te), 'spearman_rho': rho_auto, 'p_value': p_rho_auto_str},
+        {'gene_set': 'X-linked genes', 'n': len(x_te), 'spearman_rho': rho_x, 'p_value': p_rho_x_str},
+    ])
+    out_corr_spearman = tbl("co_mega_te_correlation_stats_spearman")
+    corr_stats_spearman.to_csv(out_corr_spearman, index=False)
+    print(f"  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to {out_corr_spearman}")
+
     plot_actual_vs_predicted(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', r_all, p_all_str,
                               fig("co_mega_vs_te_all_genes"))
+    plot_actual_vs_predicted_spearman(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                       f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', rho_all, p_rho_all_str,
+                                       fig("co_mega_vs_te_all_genes_spearman"))
     plot_actual_vs_predicted(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', r_auto, p_auto_str,
                               fig("co_mega_vs_te_autosomal"))
+    plot_actual_vs_predicted_spearman(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                       f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', rho_auto,
+                                       p_rho_auto_str, fig("co_mega_vs_te_autosomal_spearman"))
     if len(x_te) > 1:
         plot_actual_vs_predicted(x_te['TE_mean'], x_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                                   f'Actual TE vs. CO_Mega: X-linked genes ({TISSUE_LABEL})', r_x, p_x_str,
                                   fig("co_mega_vs_te_X_linked"))
+        plot_actual_vs_predicted_spearman(x_te['TE_mean'], x_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                           f'Actual TE vs. CO_Mega: X-linked genes ({TISSUE_LABEL})', rho_x,
+                                           p_rho_x_str, fig("co_mega_vs_te_X_linked_spearman"))
 
     out_all = tbl("co_mega_all_genes")
     biomart_df[['gene_id', 'gene_name', 'chromosome', 'is_X', 'CO_Mega']].merge(
@@ -364,6 +448,16 @@ def run_co_mega_te_analysis(biomart_df):
     plot_codon_pearson_r_barplot(
         r_df, f'Pearson R between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
         fig("co_mega_codon_pearson_r_barplot")
+    )
+
+    print("\n[10b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...")
+    rho_df = bootstrap_codon_spearman_rho(train[SENSE_CODONS], train['TE_mean'], SENSE_CODONS)
+    out_codon_rho = tbl("co_mega_codon_spearman_rho")
+    rho_df.to_csv(out_codon_rho, index=False)
+    print(f"  Saved per-codon Spearman rho (+ bootstrap SD) to {out_codon_rho}")
+    plot_codon_spearman_rho_barplot(
+        rho_df, f'Spearman rho between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
+        fig("co_mega_codon_pearson_r_barplot_spearman")
     )
 
 
@@ -388,12 +482,17 @@ def main():
     tim_df = convert_old_to_new_id(tim_df, MART_FILE)
 
     print("\n[4] Comparing BioMart vs. Tim's codon frequencies...")
-    merged, per_codon_df, per_gene_df, r_overall, p_overall_str, bio_vals, tim_vals = \
+    (merged, per_codon_df, per_codon_df_spearman, per_gene_df,
+     r_overall, p_overall_str, rho_overall, p_rho_overall_str, bio_vals, tim_vals) = \
         compare_frequencies(biomart_df, tim_df)
 
     out_per_codon = tbl("codon_frequency_comparison_per_codon")
     per_codon_df.to_csv(out_per_codon, index=False)
     print(f"  Saved per-codon comparison stats to {out_per_codon}")
+
+    out_per_codon_spearman = tbl("codon_frequency_comparison_per_codon_spearman")
+    per_codon_df_spearman.to_csv(out_per_codon_spearman, index=False)
+    print(f"  Saved per-codon comparison stats (Spearman rho) to {out_per_codon_spearman}")
 
     out_per_gene = tbl("codon_frequency_comparison_per_gene")
     per_gene_df.to_csv(out_per_gene, index=False)
@@ -402,7 +501,8 @@ def main():
     worst = per_codon_df.loc[per_codon_df['pearson_r'].idxmin()]
     best = per_codon_df.loc[per_codon_df['pearson_r'].idxmax()]
     print(f"\n  Overall (all genes x all 61 codons, n={bio_vals.size:,}): "
-          f"Pearson r = {r_overall:.4f} (p = {p_overall_str})")
+          f"Pearson r = {r_overall:.4f} (p = {p_overall_str}), "
+          f"Spearman rho = {rho_overall:.4f} (p = {p_rho_overall_str})")
     print(f"  Per-codon Pearson r: min = {worst['pearson_r']:.4f} ({worst['codon']}), "
           f"median = {per_codon_df['pearson_r'].median():.4f}, "
           f"max = {best['pearson_r']:.4f} ({best['codon']})")
@@ -413,8 +513,12 @@ def main():
     print("\n[5] Plotting comparison figures...")
     plot_overall_scatter(bio_vals, tim_vals, r_overall, p_overall_str,
                           fig("codon_freq_biomart_vs_tim_overall_scatter"))
+    plot_overall_scatter_spearman(bio_vals, tim_vals, rho_overall, p_rho_overall_str,
+                                   fig("codon_freq_biomart_vs_tim_overall_scatter_spearman"))
     plot_per_codon_r_barplot(per_codon_df, len(merged),
                               fig("codon_freq_biomart_vs_tim_per_codon_pearson_r"))
+    plot_per_codon_rho_barplot(per_codon_df_spearman, len(merged),
+                                fig("codon_freq_biomart_vs_tim_per_codon_pearson_r_spearman"))
     plot_mean_codon_scatter(per_codon_df, fig("codon_freq_biomart_vs_tim_mean_codon_scatter"))
     plot_per_gene_diff_hist(per_gene_df, fig("codon_freq_biomart_vs_tim_per_gene_diff_hist"))
 

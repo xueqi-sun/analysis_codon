@@ -54,7 +54,12 @@ Pipeline:
      separated-by-chromosome plots (boxplot + CDF) are also made using
      *all* human genes (not just those with a chicken ortholog) for the
      human-liver CO_Mega measure only (chicken-liver/normalized are
-     undefined without a chicken ortholog), suffixed `_all_genes`.
+     undefined without a chicken ortholog), suffixed `_all_genes`. This
+     "all genes" pass additionally includes a 3-group Autosome/X/Y
+     boxplot + CDF: a Y group is only meaningful here (not for the
+     ortholog-restricted or chicken-dependent measures above) since chicken
+     has no Y chromosome (ZW sex system) and essentially no human Y-linked
+     gene has a 1:1 chicken ortholog.
 
 All figures/tables from steps [1]-[5] are restricted to genes with a
 human-chicken 1:1 ortholog and are named with an `orthologs_only` suffix;
@@ -72,12 +77,13 @@ from co_mega_common import (
     plot_co_mega_boxplot, plot_co_mega_by_group, build_xci_groups,
     plot_co_mega_cdf, plot_co_mega_cdf_by_group,
     plot_co_mega_boxplot_by_chromosome, plot_co_mega_cdf_by_chromosome,
+    make_autosome_x_y_group,
 )
 
 BASE_DIR       = "/lab/solexa_page/xueqi/analysis_codon"
 ORTHOLOG_FILE  = "/lab/solexa_page/xueqi/general/genes_1to1_ortholog_human_chicken/tables/human_chicken_one2one_orthologs.csv"
-HUMAN_CO_MEGA_FILE   = os.path.join(BASE_DIR, "tables/co_mega_all_genes_human_liver.csv")
-CHICKEN_CO_MEGA_FILE = os.path.join(BASE_DIR, "tables/co_mega_all_genes_chicken_liver.csv")
+HUMAN_CO_MEGA_FILE   = os.path.join(BASE_DIR, "tables/human/co_mega_all_genes_human_liver.csv")
+CHICKEN_CO_MEGA_FILE = os.path.join(BASE_DIR, "tables/chicken/co_mega_all_genes_chicken_liver.csv")
 XCI_FILE_GYLEMO = "/lab/solexa_page/xueqi/general/genes_XCI_Gylemo/tables/chrX_genes_classification_comparison_gylemo_liver_thresh0p05.csv"
 XCI_FILE_NEHA   = "/lab/solexa_page/xueqi/general/genes_XCI_Neha/tables/chrX_genes_classification_Neha.csv"
 TABLE_DIR = os.path.join(BASE_DIR, "tables/human_chicken_comparison")
@@ -108,22 +114,28 @@ def fig(name):
 
 
 def load_ortholog_co_mega():
-    orthologs = pd.read_csv(ORTHOLOG_FILE, usecols=['Gene stable ID', 'Chicken gene stable ID']).rename(
-        columns={'Gene stable ID': 'human_gene_id', 'Chicken gene stable ID': 'chicken_gene_id'})
+    # The human CO_Mega table's `gene_id` (from the NCBI RefSeq MANE Select
+    # extraction) is actually the gene symbol, not an Ensembl ID, so we join
+    # the ortholog table's 'Gene name' (human symbol) to the CO_Mega table's
+    # `gene_name` instead of the Ensembl 'Gene stable ID' -> `gene_id`.
+    orthologs = pd.read_csv(ORTHOLOG_FILE, usecols=['Gene name', 'Chicken gene stable ID']).rename(
+        columns={'Gene name': 'gene_name', 'Chicken gene stable ID': 'chicken_gene_id'})
+    orthologs = orthologs.dropna(subset=['gene_name'])
     print(f"  Loaded {len(orthologs):,} human-chicken 1:1 orthologs.")
 
-    human_df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'CO_Mega']).rename(
-        columns={'gene_id': 'human_gene_id', 'CO_Mega': 'CO_Mega_human'})
+    human_df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
+        columns={'CO_Mega': 'CO_Mega_human'})
     chicken_df = pd.read_csv(CHICKEN_CO_MEGA_FILE, usecols=['gene_id', 'CO_Mega']).rename(
         columns={'gene_id': 'chicken_gene_id', 'CO_Mega': 'CO_Mega_chicken'})
 
-    merged = orthologs.merge(human_df, on='human_gene_id', how='inner') \
+    merged = orthologs.merge(human_df, on='gene_name', how='inner') \
                        .merge(chicken_df, on='chicken_gene_id', how='inner')
     print(f"  {len(merged):,} orthologous genes have both a human liver and chicken liver CO_Mega.")
 
-    n_auto = (merged['is_X'] == 0).sum()
     n_x = (merged['is_X'] == 1).sum()
-    print(f"  {n_auto:,} autosomal, {n_x:,} X-linked orthologous genes.")
+    n_y = (merged['is_Y'] == 1).sum()
+    n_auto = len(merged) - n_x - n_y
+    print(f"  {n_auto:,} autosomal, {n_x:,} X-linked, {n_y:,} Y-linked orthologous genes.")
 
     # CO_Mega is each species' own model's predicted log2(TE); exponentiate
     # back to a predicted (raw, always-positive) TE-like score before taking
@@ -138,14 +150,15 @@ def load_ortholog_co_mega():
 def load_all_human_co_mega():
     """
     Load human-liver CO_Mega for ALL human protein-coding genes (autosomes +
-    X), not restricted to genes with a chicken ortholog.
+    X + Y), not restricted to genes with a chicken ortholog.
     """
-    df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'CO_Mega']).rename(
+    df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
         columns={'CO_Mega': 'CO_Mega_human'})
-    n_auto = (df['is_X'] == 0).sum()
     n_x = (df['is_X'] == 1).sum()
+    n_y = (df['is_Y'] == 1).sum()
+    n_auto = len(df) - n_x - n_y
     print(f"  Loaded {len(df):,} human genes (all, not restricted to chicken orthologs): "
-          f"{n_auto:,} autosomal, {n_x:,} X-linked.")
+          f"{n_auto:,} autosomal, {n_x:,} X-linked, {n_y:,} Y-linked.")
     return df
 
 
@@ -297,6 +310,23 @@ def main():
     )
     plot_autosome_by_chromosome_vs_x(all_human, value_col, value_suffix, value_label, ylabel,
                                       'all_genes', '(all human genes)')
+
+    # Chicken has no Y chromosome (ZW sex system), so a Y group is only
+    # meaningful for this human-liver-CO_Mega-only, non-ortholog-restricted
+    # "all genes" comparison (not for the CO_Mega_chicken / normalized-score
+    # measures above, which require a chicken ortholog).
+    print("\n[6b] For comparison: Autosome vs X vs Y, using ALL human genes (human liver CO_Mega only)...")
+    all_human['group'] = make_autosome_x_y_group(all_human['chromosome'])
+    title_y = f'{value_label}: Autosome vs X vs Y\n(all human genes)'
+    plot_co_mega_by_group(
+        all_human, value_col, 'group', ['Autosome', 'X', 'Y'], title_y,
+        fig(f"co_mega_boxplot_autosome_vs_X_vs_Y_all_genes_{value_suffix}"),
+        out_csv=tbl(f"co_mega_autosome_vs_X_vs_Y_all_genes_stats_{value_suffix}"), ylabel=ylabel
+    )
+    plot_co_mega_cdf_by_group(
+        all_human, value_col, 'group', ['Autosome', 'X', 'Y'], ylabel, title_y,
+        fig(f"co_mega_cdf_autosome_vs_X_vs_Y_all_genes_{value_suffix}")
+    )
 
     print("\n=== Done ===")
 

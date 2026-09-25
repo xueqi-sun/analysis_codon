@@ -39,8 +39,10 @@ from scipy import stats
 from co_mega import SENSE_CODONS, compute_co_mega
 from co_mega_common import (
     precise_pvalue_str, compute_codon_frequencies, fit_co_mega_te_model,
-    save_coefficient_table, plot_actual_vs_predicted, plot_co_mega_boxplot,
-    bootstrap_codon_pearson_r, plot_codon_pearson_r_barplot, parse_cds_fasta,
+    save_coefficient_table, plot_actual_vs_predicted, plot_actual_vs_predicted_spearman,
+    plot_co_mega_boxplot, bootstrap_codon_pearson_r, bootstrap_codon_spearman_rho,
+    plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot, parse_cds_fasta,
+    run_regression_diagnostics,
 )
 
 BASE_DIR    = "/lab/solexa_page/xueqi/analysis_codon"
@@ -48,8 +50,8 @@ CDS_FASTA   = os.path.join(BASE_DIR, "data/chicken_CDS_sequence.txt")
 CDS_CSV     = os.path.join(BASE_DIR, "data/chicken_CDS_sequence.csv")
 TE_FILE     = "/lab/solexa_page/xueqi/analysis_riboseq/tables/chicken_liver/translational_efficiency_data.csv"
 GEGA_FILE   = "/lab/solexa_page/xueqi/general/genes_1to1_ortholog_human_chicken/data/GEGA_chicken_gene_id_conversion.csv"
-TABLE_DIR   = os.path.join(BASE_DIR, "tables")
-FIG_DIR     = os.path.join(BASE_DIR, "figures")
+TABLE_DIR   = os.path.join(BASE_DIR, "tables", "chicken")
+FIG_DIR     = os.path.join(BASE_DIR, "figures", "chicken")
 
 AUTOSOMES = [str(i) for i in range(1, 40)]  # chicken autosomes: chr 1-39
 
@@ -170,12 +172,30 @@ def main():
     save_coefficient_table(coef, model, SENSE_CODONS, out_coef)
 
     r_train, _ = stats.pearsonr(train['TE_mean'], model.fittedvalues)
+    rho_train, _ = stats.spearmanr(train['TE_mean'], model.fittedvalues)
     p_train_str = precise_pvalue_str(r_train, len(train))
+    p_train_rho_str = precise_pvalue_str(rho_train, len(train))
     plot_actual_vs_predicted(
         train['TE_mean'], model.fittedvalues,
         'Actual TE_mean (autosomal training genes)', 'Fitted TE_mean (OLS model)',
         f'Original regression: TE ~ codon frequencies\n(autosomal training genes, {TISSUE_LABEL})',
         r_train, p_train_str, fig("co_mega_regression_fit_train")
+    )
+    plot_actual_vs_predicted_spearman(
+        train['TE_mean'], model.fittedvalues,
+        'Actual TE_mean (autosomal training genes)', 'Fitted TE_mean (OLS model)',
+        f'Original regression: TE ~ codon frequencies\n(autosomal training genes, {TISSUE_LABEL})',
+        rho_train, p_train_rho_str, fig("co_mega_regression_fit_train_spearman")
+    )
+
+    print("\n[4b] Regression diagnostics (linearity, homoscedasticity, normality)...")
+    run_regression_diagnostics(
+        model, train['TE_mean'], f'autosomal training genes, {TISSUE_LABEL}',
+        fig("co_mega_regression_diagnostics_te_histogram"),
+        fig("co_mega_regression_diagnostics_residual_histogram"),
+        fig("co_mega_regression_diagnostics_residual_qq"),
+        fig("co_mega_regression_diagnostics_residual_vs_fitted"),
+        tbl("co_mega_regression_diagnostics_stats"),
     )
 
     print("\n[5] Computing CO_Mega for all genes (autosomes + Z) and comparing to TE...")
@@ -189,16 +209,25 @@ def main():
 
     auto_te = with_te[with_te['chromosome'].isin(AUTOSOMES)]
     r_auto, p_auto = stats.pearsonr(auto_te['CO_Mega'], auto_te['TE_mean'])
-    print(f"  Autosomal genes only (n={len(auto_te):,}, training set): Pearson r = {r_auto:.4f} (p = {p_auto:.3g})")
+    rho_auto, p_rho_auto = stats.spearmanr(auto_te['CO_Mega'], auto_te['TE_mean'])
+    print(f"  Autosomal genes only (n={len(auto_te):,}, training set): Pearson r = {r_auto:.4f} (p = {p_auto:.3g}), "
+          f"Spearman rho = {rho_auto:.4f} (p = {p_rho_auto:.3g})")
 
     z_te = with_te[with_te['chromosome'] == 'Z']
-    r_z, p_z = stats.pearsonr(z_te['CO_Mega'], z_te['TE_mean']) if len(z_te) > 1 else (np.nan, np.nan)
     if len(z_te) > 1:
-        print(f"  Z-linked genes only (n={len(z_te):,}, held out): Pearson r = {r_z:.4f} (p = {p_z:.3g})")
+        r_z, p_z = stats.pearsonr(z_te['CO_Mega'], z_te['TE_mean'])
+        rho_z, p_rho_z = stats.spearmanr(z_te['CO_Mega'], z_te['TE_mean'])
+        print(f"  Z-linked genes only (n={len(z_te):,}, held out): Pearson r = {r_z:.4f} (p = {p_z:.3g}), "
+              f"Spearman rho = {rho_z:.4f} (p = {p_rho_z:.3g})")
+    else:
+        r_z, p_z, rho_z, p_rho_z = np.nan, np.nan, np.nan, np.nan
 
     p_all_str = precise_pvalue_str(r_all, len(with_te))
     p_auto_str = precise_pvalue_str(r_auto, len(auto_te))
     p_z_str = precise_pvalue_str(r_z, len(z_te)) if len(z_te) > 1 else np.nan
+    p_rho_all_str = precise_pvalue_str(rho_all, len(with_te))
+    p_rho_auto_str = precise_pvalue_str(rho_auto, len(auto_te))
+    p_rho_z_str = precise_pvalue_str(rho_z, len(z_te)) if len(z_te) > 1 else np.nan
 
     corr_stats = pd.DataFrame([
         {'gene_set': 'All genes', 'n': len(with_te), 'pearson_r': r_all, 'p_value': p_all_str},
@@ -209,16 +238,34 @@ def main():
     corr_stats.to_csv(out_corr, index=False)
     print(f"  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to {out_corr}")
 
+    corr_stats_spearman = pd.DataFrame([
+        {'gene_set': 'All genes', 'n': len(with_te), 'spearman_rho': rho_all, 'p_value': p_rho_all_str},
+        {'gene_set': 'Autosomal genes', 'n': len(auto_te), 'spearman_rho': rho_auto, 'p_value': p_rho_auto_str},
+        {'gene_set': 'Z-linked genes', 'n': len(z_te), 'spearman_rho': rho_z, 'p_value': p_rho_z_str},
+    ])
+    out_corr_spearman = tbl("co_mega_te_correlation_stats_spearman")
+    corr_stats_spearman.to_csv(out_corr_spearman, index=False)
+    print(f"  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to {out_corr_spearman}")
+
     plot_actual_vs_predicted(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', r_all, p_all_str,
                               fig("co_mega_vs_te_all_genes"))
+    plot_actual_vs_predicted_spearman(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                       f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', rho_all, p_rho_all_str,
+                                       fig("co_mega_vs_te_all_genes_spearman"))
     plot_actual_vs_predicted(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', r_auto, p_auto_str,
                               fig("co_mega_vs_te_autosomal"))
+    plot_actual_vs_predicted_spearman(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                       f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', rho_auto,
+                                       p_rho_auto_str, fig("co_mega_vs_te_autosomal_spearman"))
     if len(z_te) > 1:
         plot_actual_vs_predicted(z_te['TE_mean'], z_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                                   f'Actual TE vs. CO_Mega: Z-linked genes ({TISSUE_LABEL})', r_z, p_z_str,
                                   fig("co_mega_vs_te_Z_linked"))
+        plot_actual_vs_predicted_spearman(z_te['TE_mean'], z_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
+                                           f'Actual TE vs. CO_Mega: Z-linked genes ({TISSUE_LABEL})', rho_z,
+                                           p_rho_z_str, fig("co_mega_vs_te_Z_linked_spearman"))
 
     out_all = tbl("co_mega_all_genes")
     codon_df[['gene_id', 'gene_name', 'chromosome', 'is_Z', 'te_gene_id', 'CO_Mega']].merge(
@@ -239,6 +286,16 @@ def main():
     plot_codon_pearson_r_barplot(
         r_df, f'Pearson R between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
         fig("co_mega_codon_pearson_r_barplot")
+    )
+
+    print("\n[7b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...")
+    rho_df = bootstrap_codon_spearman_rho(train[SENSE_CODONS], train['TE_mean'], SENSE_CODONS)
+    out_codon_rho = tbl("co_mega_codon_spearman_rho")
+    rho_df.to_csv(out_codon_rho, index=False)
+    print(f"  Saved per-codon Spearman rho (+ bootstrap SD) to {out_codon_rho}")
+    plot_codon_spearman_rho_barplot(
+        rho_df, f'Spearman rho between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
+        fig("co_mega_codon_pearson_r_barplot_spearman")
     )
 
     print("\n=== Done ===")
