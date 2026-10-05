@@ -5,18 +5,23 @@ compare CO_Mega between autosomal, X-linked, and Y-linked genes.
 
 Pipeline:
   1. Load CDS sequences for all human protein-coding genes (autosomes + X +
-     Y) from their MANE Select transcripts, extracted by
-     general/sequence_CDS/human/scripts/extract_human_cds.py from the NCBI
-     RefSeq GRCh38.p14 annotation (general/sequence_CDS/human/tables/
-     human_CDS_sequences_MANE_Select.csv).
+     Y) from their MANE Select transcripts, extracted directly from the MANE
+     Ensembl GTF (MANE.GRCh38.v1.5.ensembl_genomic.gtf; CDS + stop_codon
+     records of `tag "MANE_Select"` transcripts) by
+     general/sequence_CDS/human/scripts/extract_human_cds_mane_ensembl.py
+     (general/sequence_CDS/human/tables/
+     human_CDS_sequences_MANE_Select_ensembl.csv). Ensembl gene IDs are native
+     to that GTF: `gene_id` is the versioned Ensembl gene ID and
+     `ensembl_gene_id` the same ID without the version suffix; the latter is
+     what every join below uses. No RefSeq -> Ensembl conversion is involved.
   2. For each gene, split the CDS into codons, drop the last codon (the stop
      codon), and compute each of the 61 sense codons' frequency as
      (# that codon) / (# total codons remaining).
   3. Load per-gene TE_mean (human liver) from
      analysis_riboseq/tables/human_liver/all_human_genes_merged_data.csv,
-     merging on gene_name/symbol (the new CDS table's `gene_id` is actually
-     the RefSeq gene symbol, not an Ensembl ID, so symbol is the only
-     identifier shared with the Ensembl-ID-keyed TE table).
+     merging on `ensembl_gene_id` <-> `Gene_ID` (gene-ID-based like every other
+     join in the pipeline; still audited at every merge via `audit_join` /
+     `check_key_uniqueness` below).
   4. Fit  TE_mean ~ 61 codon frequencies  (OLS) using only autosomal
      (chr 1-22) genes. Report R^2 and save the intercept + 61 coefficients.
   5. Apply the fitted model to ALL genes (autosomes + X + Y) to get each
@@ -42,10 +47,13 @@ from co_mega_common import (
     plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot,
     plot_co_mega_by_group, build_xci_groups,
     make_autosome_x_y_group, run_regression_diagnostics,
+    audit_join, check_key_uniqueness,
 )
 
 BASE_DIR  = "/lab/solexa_page/xueqi/analysis_codon"
-CDS_FILE  = "/lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select.csv"
+# Canonical human CDS table: MANE Select CDS taken straight from the MANE
+# Ensembl GTF (extract_human_cds_mane_ensembl.py); native Ensembl gene IDs.
+CDS_FILE  = "/lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv"
 TE_FILE   = "/lab/solexa_page/xueqi/analysis_riboseq/tables/human_liver/all_human_genes_merged_data.csv"
 # Y-linked genes are NOT in TE_FILE (0 rows there); computed separately
 # (samples 1 & 2 only -- sample 3 is female, 0 reads on Y genes) by
@@ -72,8 +80,10 @@ def fig(name):
 
 # ── Codon frequencies ───────────────────────────────────────────────────────
 def load_codon_frequencies(cds_file):
-    df = pd.read_csv(cds_file, usecols=['gene_id', 'gene_name', 'chromosome', 'CDS_sequence'])
+    df = pd.read_csv(cds_file, usecols=['gene_id', 'ensembl_gene_id', 'gene_name', 'chromosome', 'CDS_sequence'])
     print(f"  Loaded {len(df):,} genes from {cds_file}")
+    n_with_ensembl_id = df['ensembl_gene_id'].notna().sum()
+    print(f"  {n_with_ensembl_id:,} of {len(df):,} genes have an Ensembl gene ID (native to the MANE GTF).")
 
     freq_records = df['CDS_sequence'].apply(compute_codon_frequencies)
     n_unusable = freq_records.isna().sum()
@@ -82,7 +92,7 @@ def load_codon_frequencies(cds_file):
     print(f"  Dropped {n_unusable:,} genes with missing/unusable CDS sequences "
           f"(not a multiple of 3, or too short); {len(df):,} genes remain.")
 
-    out = pd.concat([df[['gene_id', 'gene_name', 'chromosome']], freq_df], axis=1)
+    out = pd.concat([df[['gene_id', 'ensembl_gene_id', 'gene_name', 'chromosome']], freq_df], axis=1)
     out['chromosome'] = out['chromosome'].astype(str)
     out['is_X'] = (out['chromosome'] == 'X').astype(int)
     out['is_Y'] = (out['chromosome'] == 'Y').astype(int)
@@ -150,16 +160,29 @@ def main():
     print(f"  Saved codon frequencies to {out_codon}")
 
     print("\n[2] Loading human liver TE data...")
-    # Merge on gene_name/symbol: the new CDS table's `gene_id` (from the NCBI
-    # RefSeq GTF) is actually the gene symbol, not an Ensembl ID, so gene_name
-    # is the only identifier shared with this Ensembl-ID-keyed TE table.
-    te_df = pd.read_csv(TE_FILE)[['gene_name', 'TE_mean']]
-    te_df_y = pd.read_csv(TE_FILE_Y)[['gene_name', 'TE_mean']]
+    # ID-based join on `ensembl_gene_id` <-> `Gene_ID` (both real Ensembl gene
+    # IDs). This used to be the pipeline's one deliberate name-based-join
+    # exception -- see the module docstring step 3 -- but now that the CDS
+    # table carries a real Ensembl gene ID (via convert_refseq_to_ensembl.py
+    # / mygene.info), there is no exception left. Still audited at every
+    # merge (check_key_uniqueness() below and audit_join() at every merge)
+    # as a matter of course, same as every other join in this pipeline.
+    # (te_df carries only `ensembl_gene_id`/`TE_mean` -- not `gene_name` --
+    # since codon_df already has the authoritative gene_name for every merge
+    # below; this avoids a redundant/duplicated gene_name_right column.)
+    te_raw = pd.read_csv(TE_FILE).rename(columns={'Gene_ID': 'ensembl_gene_id'})
+    check_key_uniqueness(te_raw, 'ensembl_gene_id', 'all_human_genes_merged_data.csv (TE_FILE)')
+    te_df = te_raw[['ensembl_gene_id', 'TE_mean']]
+    te_df_y = pd.read_csv(TE_FILE_Y).rename(columns={'Gene_ID': 'ensembl_gene_id'})[['ensembl_gene_id', 'TE_mean']]
     te_df = pd.concat([te_df, te_df_y], ignore_index=True)
-    te_df = te_df.dropna(subset=['TE_mean', 'gene_name'])
+    te_df = te_df.dropna(subset=['TE_mean', 'ensembl_gene_id'])
     print(f"  {len(te_df):,} genes with TE_mean ({len(te_df_y):,} Y-linked, from {TE_FILE_Y}).")
 
-    merged = codon_df.merge(te_df, on='gene_name', how='inner')
+    merged = audit_join(
+        codon_df, te_df, 'ensembl_gene_id', 'ensembl_gene_id',
+        'human codon frequencies (CDS, Ensembl gene ID)', 'human TE (Ensembl gene ID)',
+        tbl("join_audit_codon_vs_te_train"),
+    )
     print(f"  {len(merged):,} genes with both codon frequencies and TE_mean.")
 
     print("\n[3] Fitting TE_mean ~ codon frequencies on autosomal genes...")
@@ -201,7 +224,12 @@ def main():
     print("\n[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...")
     codon_df['CO_Mega'] = compute_co_mega(codon_df[SENSE_CODONS], coef)
 
-    with_te = codon_df.merge(te_df, on='gene_name', how='inner')
+    # ID-based join again (see [2] above), all genes.
+    with_te = audit_join(
+        codon_df, te_df, 'ensembl_gene_id', 'ensembl_gene_id',
+        'human codon frequencies (all genes, Ensembl gene ID)', 'human TE (Ensembl gene ID)',
+        tbl("join_audit_codon_vs_te_all_genes"),
+    )
     r_all, p_all = stats.pearsonr(with_te['CO_Mega'], with_te['TE_mean'])
     rho_all, p_rho_all = stats.spearmanr(with_te['CO_Mega'], with_te['TE_mean'])
     print(f"  All genes with TE (n={len(with_te):,}): "
@@ -288,10 +316,24 @@ def main():
                                            p_rho_y_str, fig("co_mega_vs_te_Y_linked_spearman"))
 
     out_all = tbl("co_mega_all_genes")
-    codon_df[['gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']].merge(
-        te_df, on='gene_name', how='left'
-    ).to_csv(out_all, index=False)
+    # NOTE: this output table's `gene_id` column is still the RefSeq gene
+    # SYMBOL (kept as informational metadata only -- see the docstring step 1
+    # note) -- any script that reads co_mega_all_genes_human_liver.csv and
+    # needs to join it to another Ensembl-ID-keyed table (e.g.
+    # human_chicken_comparison.py) should join on `ensembl_gene_id`, not
+    # `gene_id` or `gene_name`.
+    all_genes_with_te = audit_join(
+        codon_df[['gene_id', 'ensembl_gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']], te_df,
+        'ensembl_gene_id', 'ensembl_gene_id',
+        'human codon frequencies (all genes, for output table)', 'human TE (Ensembl gene ID)',
+        tbl("join_audit_codon_vs_te_output_table"), how='left',
+    )
+    all_genes_with_te.to_csv(out_all, index=False)
     print(f"  Saved CO_Mega for all {len(codon_df):,} genes to {out_all}")
+    check_key_uniqueness(
+        all_genes_with_te, 'ensembl_gene_id',
+        'co_mega_all_genes_human_liver.csv (output; downstream scripts should join this on ensembl_gene_id)'
+    )
 
     print("\n[5] Boxplot: CO_Mega, autosomal vs X-linked genes...")
     plot_co_mega_boxplot(codon_df, 'CO_Mega', 'is_X', 'X chromosome',

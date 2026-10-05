@@ -1,8 +1,9 @@
 #!/home/xueqisun/miniforge3/envs/xi_app/bin/python3
 """
 Shared helpers for the human/chicken CO_Mega analyses (human_co_mega_analysis.py,
-chicken_co_mega_analysis.py): codon-frequency computation, OLS model
-fitting/reporting, precise (non-underflowing) p-values, and the plotting
+chicken_co_mega_analysis.py, human_chicken_comparison.py): codon-frequency
+computation, OLS model fitting/reporting, precise (non-underflowing)
+p-values, gene-ID/name join auditing (`audit_join`), and the plotting
 functions common to both species' pipelines.
 """
 
@@ -21,7 +22,11 @@ from matplotlib.lines import Line2D
 from scipy import stats
 import mpmath
 
-from co_mega import SENSE_CODONS
+STOP_CODONS = ('TAA', 'TAG', 'TGA')
+
+_BASES = 'TCAG'
+ALL_CODONS = [b1 + b2 + b3 for b1 in _BASES for b2 in _BASES for b3 in _BASES]
+SENSE_CODONS = [c for c in ALL_CODONS if c not in STOP_CODONS]  # 61 codons
 
 mpmath.mp.dps = 60
 
@@ -40,6 +45,85 @@ def precise_pvalue_str(r, n, sig_figs=4):
     sf = mpmath.mpf('0.5') * mpmath.betainc(mpmath.mpf(df) / 2, mpmath.mpf('0.5'), 0, x, regularized=True)
     p = 2 * sf
     return mpmath.nstr(p, sig_figs, min_fixed=0, max_fixed=0)
+
+
+# ── Gene-ID/name join auditing ──────────────────────────────────────────────
+def audit_join(left_df, right_df, left_key, right_key, left_label, right_label,
+                out_csv, how='inner'):
+    """
+    Perform a merge with full auditability, per the pipeline's join-
+    verification standard: print row counts before/after, duplicated-key
+    counts on both sides, and how many keys on each side fail to match; save
+    a small audit CSV (key, source_table, matched) listing every unmatched
+    key from both sides.
+
+    `left_key`/`right_key` may be the same or different column names.
+    Returns the merged DataFrame (merge type `how`, default 'inner').
+    """
+    n_left, n_right = len(left_df), len(right_df)
+    # .dropna() before .duplicated(): a missing key (e.g. a gene with no
+    # clean 1:1 ID mapping) is not a "duplicate" of every other missing key --
+    # it's an unmatched key, already counted separately below.
+    dup_left = int(left_df[left_key].dropna().duplicated().sum())
+    dup_right = int(right_df[right_key].dropna().duplicated().sum())
+
+    left_keys = set(left_df[left_key].dropna())
+    right_keys = set(right_df[right_key].dropna())
+    left_unmatched = left_keys - right_keys
+    right_unmatched = right_keys - left_keys
+
+    if left_key == right_key:
+        merged = left_df.merge(right_df, on=left_key, how=how, suffixes=('', '_right'))
+    else:
+        merged = left_df.merge(right_df, left_on=left_key, right_on=right_key, how=how,
+                                suffixes=('', '_right'))
+
+    print(f"  [join audit] {left_label} ({n_left:,} rows, key='{left_key}') x "
+          f"{right_label} ({n_right:,} rows, key='{right_key}'):")
+    print(f"    duplicated keys: {dup_left:,} in {left_label}, {dup_right:,} in {right_label}")
+    print(f"    unmatched: {len(left_unmatched):,} {left_label} keys with no match in {right_label}; "
+          f"{len(right_unmatched):,} {right_label} keys with no match in {left_label}")
+    print(f"    rows after merge ('{how}'): {len(merged):,}")
+
+    audit_rows = (
+        [{'key': k, 'source_table': left_label, 'matched': False} for k in sorted(map(str, left_unmatched))] +
+        [{'key': k, 'source_table': right_label, 'matched': False} for k in sorted(map(str, right_unmatched))]
+    )
+    pd.DataFrame(audit_rows, columns=['key', 'source_table', 'matched']).to_csv(out_csv, index=False)
+    print(f"    Saved unmatched-key audit ({len(audit_rows):,} rows) to {out_csv}")
+
+    return merged
+
+
+def check_key_uniqueness(df, key_col, table_label):
+    """
+    Print how many distinct `key_col` values in `df` are duplicated (e.g.
+    PAR genes that share a symbol across separate X-copy/Y-copy Ensembl
+    IDs, or -- more generally -- any join key that isn't actually 1 row per
+    value), since a duplicated join key silently fans out a merge. Works for
+    any key column, gene name or gene ID alike.
+    """
+    n_rows = len(df)
+    n_distinct = df[key_col].nunique(dropna=True)
+    dup_counts = df[key_col].value_counts()
+    dup_keys = dup_counts[dup_counts > 1]
+    n_dup_rows = int(dup_keys.sum())
+    print(f"  [key uniqueness] {table_label}: {n_rows:,} rows, {n_distinct:,} distinct '{key_col}' "
+          f"values; {len(dup_keys):,} values are duplicated (covering {n_dup_rows:,} rows).")
+    if len(dup_keys) > 0:
+        example = ', '.join(dup_keys.index[:5].astype(str))
+        print(f"    e.g.: {example}{' ...' if len(dup_keys) > 5 else ''}")
+    return dup_keys
+
+
+# Backward-compatible alias: this used to be name-only (`name_col`), back
+# when it was only ever called on gene symbols. It's fully generic now (see
+# check_key_uniqueness above) -- human_co_mega_analysis.py and
+# human_chicken_comparison.py call check_key_uniqueness directly on
+# `ensembl_gene_id` now that the human CDS/codon table carries a real
+# Ensembl gene ID (see convert_refseq_to_ensembl.py), but this alias is kept
+# in case anything still imports the old name.
+check_gene_name_uniqueness = check_key_uniqueness
 
 
 # ── FASTA parsing ────────────────────────────────────────────────────────────

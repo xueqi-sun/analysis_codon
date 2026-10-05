@@ -12,15 +12,19 @@ Pipeline:
   2. For each gene, split the CDS into codons, drop the last codon (the stop
      codon), and compute each of the 61 sense codons' frequency as
      (# that codon) / (# total codons remaining).
-  3. Load per-gene TE_mean (chicken liver) from
-     analysis_riboseq/tables/chicken_liver/translational_efficiency_data.csv.
-     Its gene IDs use a different (GRCg6a) ID scheme than the CDS file
-     (EnsemblBiomart), so IDs are converted via
-     general/genes_1to1_ortholog_human_chicken/data/GEGA_chicken_gene_id_conversion.csv
-     ("gnId_eqGRCg6a" <-> TE file's Gene_ID; "gnId_eqEnsemblBiomart" /
-     "gnName_eqEnsemblBiomart" <-> CDS file's gene_id / gene_name), keeping
-     only unique (1:1) ID mappings and falling back to a name-based mapping
-     when the ID mapping is missing/ambiguous.
+  3. Load per-gene TE_mean (chicken liver) from the CANONICAL chicken TE
+     table, analysis_riboseq/tables/chicken_liver/translational_efficiency_data_with_ids.csv
+     (produced once by analysis_riboseq/scripts/build_chicken_te_with_ids.py,
+     which attaches each gene's EnsemblBioMart ID -- from
+     general/genes_1to1_ortholog_human_chicken/tables/chicken_id_crosswalk.csv,
+     itself built once by
+     general/genes_1to1_ortholog_human_chicken/scripts/build_chicken_id_crosswalk.py
+     -- to the raw TE table, which is keyed by the OLD GRCg6a Ensembl gene
+     ID). This script does NOT redo that ID conversion: it just joins its
+     own (already EnsemblBioMart-keyed) `gene_id` directly against the
+     augmented TE table's `ensembl_biomart_gene_id`. Genes without a clean
+     1:1 GRCg6a<->EnsemblBioMart ID mapping have no `ensembl_biomart_gene_id`
+     in that file and are excluded here -- there is no name-based fallback.
   4. Fit  TE_mean ~ 61 codon frequencies  (OLS) using only autosomal
      (chr 1-39) genes. Report R^2 and save the intercept + 61 coefficients.
   5. Apply the fitted model to ALL genes (autosomes + Z) to get each gene's
@@ -42,14 +46,16 @@ from co_mega_common import (
     save_coefficient_table, plot_actual_vs_predicted, plot_actual_vs_predicted_spearman,
     plot_co_mega_boxplot, bootstrap_codon_pearson_r, bootstrap_codon_spearman_rho,
     plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot, parse_cds_fasta,
-    run_regression_diagnostics,
+    run_regression_diagnostics, audit_join,
 )
 
 BASE_DIR    = "/lab/solexa_page/xueqi/analysis_codon"
 CDS_FASTA   = os.path.join(BASE_DIR, "data/chicken_CDS_sequence.txt")
 CDS_CSV     = os.path.join(BASE_DIR, "data/chicken_CDS_sequence.csv")
-TE_FILE     = "/lab/solexa_page/xueqi/analysis_riboseq/tables/chicken_liver/translational_efficiency_data.csv"
-GEGA_FILE   = "/lab/solexa_page/xueqi/general/genes_1to1_ortholog_human_chicken/data/GEGA_chicken_gene_id_conversion.csv"
+# Canonical chicken TE table (chicken Gene_ID (GRCg6a) already joined to its
+# EnsemblBioMart ID once, upstream -- see build_chicken_te_with_ids.py).
+TE_FILE     = ("/lab/solexa_page/xueqi/analysis_riboseq/tables/chicken_liver/"
+               "translational_efficiency_data_with_ids.csv")
 TABLE_DIR   = os.path.join(BASE_DIR, "tables", "chicken")
 FIG_DIR     = os.path.join(BASE_DIR, "figures", "chicken")
 
@@ -88,51 +94,16 @@ def load_codon_frequencies(cds_csv):
     return out
 
 
-# ── Step 3: chicken gene-ID conversion (GEGA table) ─────────────────────────
-def _unique_1to1_series(df, key_col, val_col):
-    """Keep only key -> value pairs where the key maps to exactly one value."""
-    sub = df[[key_col, val_col]].dropna().drop_duplicates()
-    counts = sub.groupby(key_col)[val_col].nunique()
-    unique_keys = set(counts[counts == 1].index)
-    sub = sub[sub[key_col].isin(unique_keys)].drop_duplicates(subset=[key_col])
-    return sub.set_index(key_col)[val_col]
-
-
-def build_id_conversion(gega_file):
-    """
-    Build gene_id -> TE-file gene ID and gene_name -> TE-file gene ID lookup
-    tables from the GEGA chicken gene-ID conversion file, keeping only
-    unique (1:1) mappings (ambiguous many:1 or 1:many mappings are dropped).
-    """
-    df = pd.read_csv(
-        gega_file, sep=';', quotechar='"', low_memory=False,
-        usecols=['gnId_eqEnsemblBiomart', 'gnName_eqEnsemblBiomart', 'gnId_eqGRCg6a']
-    )
-    df = df.dropna(subset=['gnId_eqGRCg6a'])
-    id_map = _unique_1to1_series(df, 'gnId_eqEnsemblBiomart', 'gnId_eqGRCg6a')
-    name_map = _unique_1to1_series(df, 'gnName_eqEnsemblBiomart', 'gnId_eqGRCg6a')
-    print(f"  Loaded {len(df):,} rows with a GRCg6a ID from {gega_file}")
-    print(f"  {len(id_map):,} unique ID-based and {len(name_map):,} unique name-based mappings to TE-file gene IDs.")
-    return id_map, name_map
-
-
-def map_te_gene_id(codon_df, id_map, name_map):
-    """
-    Map each CDS-file gene to the TE file's gene-ID scheme: try the
-    ID-based mapping first (gene_id -> gnId_eqEnsemblBiomart -> gnId_eqGRCg6a),
-    then fall back to the name-based mapping (gene_name -> gnName_eqEnsemblBiomart
-    -> gnId_eqGRCg6a) when the ID mapping is missing.
-    """
-    by_id = codon_df['gene_id'].map(id_map)
-    by_name = codon_df['gene_name'].map(name_map)
-    te_gene_id = by_id.combine_first(by_name)
-
-    n_by_id = by_id.notna().sum()
-    n_by_name_only = (te_gene_id.notna() & by_id.isna()).sum()
-    print(f"  Mapped {n_by_id:,} genes to a TE-file gene ID by ID, "
-          f"{n_by_name_only:,} more by gene-name fallback; "
-          f"{te_gene_id.notna().sum():,} of {len(codon_df):,} genes mapped in total.")
-    return te_gene_id
+# NOTE: this script used to do its own GRCg6a <-> EnsemblBioMart chicken
+# gene-ID conversion here (via the raw GEGA table, with a name-based fallback
+# for genes whose ID mapping was missing/ambiguous). That conversion now
+# happens exactly ONCE, upstream, in
+# general/genes_1to1_ortholog_human_chicken/scripts/build_chicken_id_crosswalk.py
+# (ID-only, no name fallback -- ambiguous/unmapped genes are dropped and
+# reported in chicken_id_crosswalk_audit.csv) and is propagated into the
+# canonical TE table by analysis_riboseq/scripts/build_chicken_te_with_ids.py.
+# This script simply reads that already-ID-augmented TE table below and
+# joins directly on ensembl_biomart_gene_id (see main(), step [3]).
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
@@ -151,15 +122,24 @@ def main():
     codon_df.to_csv(out_codon, index=False)
     print(f"  Saved codon frequencies to {out_codon}")
 
-    print("\n[3] Loading chicken liver TE data and converting gene IDs...")
-    te_df = pd.read_csv(TE_FILE)[['Gene_ID', 'TE_mean']].rename(columns={'Gene_ID': 'te_gene_id'})
-    te_df = te_df.dropna(subset=['TE_mean'])
-    print(f"  {len(te_df):,} genes with TE_mean in {TE_FILE}")
+    print("\n[3] Loading canonical chicken liver TE data (EnsemblBioMart IDs already attached)...")
+    te_df = pd.read_csv(TE_FILE)[['ensembl_biomart_gene_id', 'TE_mean']].rename(
+        columns={'ensembl_biomart_gene_id': 'te_gene_id'})
+    n_te_no_id = int(te_df['te_gene_id'].isna().sum())
+    te_df = te_df.dropna(subset=['TE_mean', 'te_gene_id'])
+    print(f"  {len(te_df):,} chicken genes with both TE_mean and a mapped EnsemblBioMart ID in {TE_FILE} "
+          f"({n_te_no_id:,} rows there had no mapped ID -- no clean 1:1 crosswalk mapping -- and are excluded).")
 
-    id_map, name_map = build_id_conversion(GEGA_FILE)
-    codon_df['te_gene_id'] = map_te_gene_id(codon_df, id_map, name_map)
-
-    merged = codon_df.merge(te_df, on='te_gene_id', how='inner')
+    # ID-based join only: codon_df['gene_id'] is already an EnsemblBioMart ID
+    # (from the CDS FASTA header), matching te_df['te_gene_id'] directly.
+    # No per-script ID conversion and no name-based fallback (see note above
+    # build_id_conversion's old location).
+    codon_df['te_gene_id'] = codon_df['gene_id']
+    merged = audit_join(
+        codon_df, te_df, 'te_gene_id', 'te_gene_id',
+        'chicken codon frequencies (training genes)', 'chicken TE (with EnsemblBioMart IDs)',
+        tbl("join_audit_codon_vs_te_train"),
+    )
     print(f"  {len(merged):,} genes with both codon frequencies and TE_mean.")
 
     print("\n[4] Fitting TE_mean ~ codon frequencies on autosomal genes...")
@@ -201,7 +181,11 @@ def main():
     print("\n[5] Computing CO_Mega for all genes (autosomes + Z) and comparing to TE...")
     codon_df['CO_Mega'] = compute_co_mega(codon_df[SENSE_CODONS], coef)
 
-    with_te = codon_df.merge(te_df, on='te_gene_id', how='inner')
+    with_te = audit_join(
+        codon_df, te_df, 'te_gene_id', 'te_gene_id',
+        'chicken codon frequencies (all genes)', 'chicken TE (with EnsemblBioMart IDs)',
+        tbl("join_audit_codon_vs_te_all_genes"),
+    )
     r_all, p_all = stats.pearsonr(with_te['CO_Mega'], with_te['TE_mean'])
     rho_all, p_rho_all = stats.spearmanr(with_te['CO_Mega'], with_te['TE_mean'])
     print(f"  All genes with TE (n={len(with_te):,}): "
@@ -268,9 +252,13 @@ def main():
                                            p_rho_z_str, fig("co_mega_vs_te_Z_linked_spearman"))
 
     out_all = tbl("co_mega_all_genes")
-    codon_df[['gene_id', 'gene_name', 'chromosome', 'is_Z', 'te_gene_id', 'CO_Mega']].merge(
-        te_df, on='te_gene_id', how='left'
-    ).to_csv(out_all, index=False)
+    all_genes_with_te = audit_join(
+        codon_df[['gene_id', 'gene_name', 'chromosome', 'is_Z', 'te_gene_id', 'CO_Mega']], te_df,
+        'te_gene_id', 'te_gene_id',
+        'chicken codon frequencies (all genes, for output table)', 'chicken TE (with EnsemblBioMart IDs)',
+        tbl("join_audit_codon_vs_te_output_table"), how='left',
+    )
+    all_genes_with_te.to_csv(out_all, index=False)
     print(f"  Saved CO_Mega for all {len(codon_df):,} genes to {out_all}")
 
     print("\n[6] Boxplot: CO_Mega, autosomal vs Z-linked genes...")

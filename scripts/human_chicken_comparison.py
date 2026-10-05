@@ -16,9 +16,17 @@ Pipeline:
   1. Load human-chicken 1:1 orthologs from
      general/genes_1to1_ortholog_human_chicken/tables/human_chicken_one2one_orthologs.csv
      ('Gene stable ID' = human gene, 'Chicken gene stable ID' = chicken gene).
-  2. Merge with human CO_Mega (analysis_codon/tables/co_mega_all_genes_human_liver.csv,
-     on 'gene_id') and chicken CO_Mega (co_mega_all_genes_chicken_liver.csv,
-     on 'gene_id'), keeping only genes with both. Compute:
+  2. Merge with human CO_Mega (analysis_codon/tables/co_mega_all_genes_human_liver.csv)
+     and chicken CO_Mega (co_mega_all_genes_chicken_liver.csv), keeping only
+     genes with both. The human-side merge is on `ensembl_gene_id` -- this
+     used to be the pipeline's one deliberate name-based-join exception
+     (the human CO_Mega table's `gene_id` is a RefSeq symbol, not a real
+     Ensembl ID), but it no longer is: human_co_mega_analysis.py now attaches
+     a real Ensembl gene ID (via convert_refseq_to_ensembl.py / mygene.info)
+     to every human CO_Mega row, so this join is ID-based like every other
+     join in this pipeline (see load_ortholog_co_mega() for the full
+     explanation and audit). The chicken-side merge is on gene ID (both
+     sides already use EnsemblBioMart IDs), also ID-based, as before. Compute:
        exp_codon_score_human   = 2 ** CO_Mega_human
        exp_codon_score_chicken = 2 ** CO_Mega_chicken
        normalized_score        = exp_codon_score_human / exp_codon_score_chicken
@@ -77,7 +85,7 @@ from co_mega_common import (
     plot_co_mega_boxplot, plot_co_mega_by_group, build_xci_groups,
     plot_co_mega_cdf, plot_co_mega_cdf_by_group,
     plot_co_mega_boxplot_by_chromosome, plot_co_mega_cdf_by_chromosome,
-    make_autosome_x_y_group,
+    make_autosome_x_y_group, audit_join, check_key_uniqueness,
 )
 
 BASE_DIR       = "/lab/solexa_page/xueqi/analysis_codon"
@@ -114,22 +122,46 @@ def fig(name):
 
 
 def load_ortholog_co_mega():
-    # The human CO_Mega table's `gene_id` (from the NCBI RefSeq MANE Select
-    # extraction) is actually the gene symbol, not an Ensembl ID, so we join
-    # the ortholog table's 'Gene name' (human symbol) to the CO_Mega table's
-    # `gene_name` instead of the Ensembl 'Gene stable ID' -> `gene_id`.
-    orthologs = pd.read_csv(ORTHOLOG_FILE, usecols=['Gene name', 'Chicken gene stable ID']).rename(
-        columns={'Gene name': 'gene_name', 'Chicken gene stable ID': 'chicken_gene_id'})
-    orthologs = orthologs.dropna(subset=['gene_name'])
+    # HUMAN SIDE: ID-based join on `ensembl_gene_id`, no exception. This used
+    # to be the pipeline's one deliberate name-based-join exception (the
+    # human CO_Mega table's `gene_id`, from human_co_mega_analysis.py /
+    # extract_human_cds.py / the NCBI RefSeq MANE Select GTF, is actually the
+    # gene symbol, not a real Ensembl gene ID). It no longer is: the human
+    # CO_Mega table now carries a real Ensembl gene ID per gene (attached in
+    # human_co_mega_analysis.py via convert_refseq_to_ensembl.py /
+    # mygene.info), so we join the ortholog table's 'Gene stable ID' (human
+    # Ensembl gene ID) directly to the CO_Mega table's `ensembl_gene_id`.
+    # Still audited below (check_key_uniqueness + audit_join), same as every
+    # join in this pipeline -- some human CO_Mega genes have no
+    # `ensembl_gene_id` (no clean 1:1 RefSeq -> Ensembl mapping) and are
+    # correctly excluded here rather than silently resolved by name.
+    #
+    # CHICKEN SIDE: already gene-ID-based, unchanged. The chicken CO_Mega
+    # table's `gene_id` comes from the chicken CDS FASTA header, which is
+    # already an EnsemblBioMart gene ID -- the same scheme the ortholog
+    # table's 'Chicken gene stable ID' uses -- so `chicken_gene_id` is joined
+    # ID-to-ID with no name bridge involved.
+    orthologs = pd.read_csv(ORTHOLOG_FILE, usecols=['Gene stable ID', 'Chicken gene stable ID']).rename(
+        columns={'Gene stable ID': 'ensembl_gene_id', 'Chicken gene stable ID': 'chicken_gene_id'})
+    orthologs = orthologs.dropna(subset=['ensembl_gene_id'])
     print(f"  Loaded {len(orthologs):,} human-chicken 1:1 orthologs.")
 
-    human_df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
+    human_df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'ensembl_gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
         columns={'CO_Mega': 'CO_Mega_human'})
+    check_key_uniqueness(human_df, 'ensembl_gene_id', 'co_mega_all_genes_human_liver.csv (HUMAN_CO_MEGA_FILE)')
     chicken_df = pd.read_csv(CHICKEN_CO_MEGA_FILE, usecols=['gene_id', 'CO_Mega']).rename(
         columns={'gene_id': 'chicken_gene_id', 'CO_Mega': 'CO_Mega_chicken'})
 
-    merged = orthologs.merge(human_df, on='gene_name', how='inner') \
-                       .merge(chicken_df, on='chicken_gene_id', how='inner')
+    human_merged = audit_join(
+        orthologs, human_df, 'ensembl_gene_id', 'ensembl_gene_id',
+        'human-chicken orthologs (human Ensembl gene ID)', 'human CO_Mega (Ensembl gene ID)',
+        tbl("join_audit_orthologs_vs_human_co_mega"),
+    )
+    merged = audit_join(
+        human_merged, chicken_df, 'chicken_gene_id', 'chicken_gene_id',
+        'orthologs+human CO_Mega', 'chicken CO_Mega (ID-based)',
+        tbl("join_audit_orthologs_vs_chicken_co_mega"),
+    )
     print(f"  {len(merged):,} orthologous genes have both a human liver and chicken liver CO_Mega.")
 
     n_x = (merged['is_X'] == 1).sum()
@@ -152,7 +184,7 @@ def load_all_human_co_mega():
     Load human-liver CO_Mega for ALL human protein-coding genes (autosomes +
     X + Y), not restricted to genes with a chicken ortholog.
     """
-    df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
+    df = pd.read_csv(HUMAN_CO_MEGA_FILE, usecols=['gene_id', 'ensembl_gene_id', 'gene_name', 'chromosome', 'is_X', 'is_Y', 'CO_Mega']).rename(
         columns={'CO_Mega': 'CO_Mega_human'})
     n_x = (df['is_X'] == 1).sum()
     n_y = (df['is_Y'] == 1).sum()
