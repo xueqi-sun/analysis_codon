@@ -1,0 +1,143 @@
+=== Human CO_Mega model (human liver) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/codon_frequencies_human_liver_lasso.csv
+
+[2] Loading human liver TE data...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 12,086 rows, 12,086 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  12,092 genes with TE_mean (6 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/human_liver/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 7,208 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 72 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 12,020
+    Saved unmatched-key audit (7,280 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/join_audit_codon_vs_te_train_human_liver_lasso.csv
+  12,020 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies (LASSO) on autosomal genes...
+  Training on 11,613 autosomal genes, 61 codon predictors.
+  R^2 = 0.5379   Adjusted R^2 = 0.5358   n = 11613
+  Lasso alpha (10-fold CV) = 0.00582; 51 of 61 codons have non-zero coefficients.
+  Saved intercept + 61 lasso codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_model_coefficients_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_fit_train_human_liver_lasso.png  (Pearson R = 0.7334, Pearson R² = 0.5379, p = 3.252e-1949, n = 11,613)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_fit_train_spearman_human_liver_lasso.png  (Spearman rho = 0.7495, Spearman rho² = 0.5618, p = 6.028e-2083, n = 11,613)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Lasso regression diagnostics (autosomal training genes, Human liver, lasso) ---
+  Normality of residuals: skew = -0.472, excess kurtosis = 1.076, D'Agostino K^2 p = 6.1e-140
+  Homoscedasticity (Breusch-Pagan): LM stat = 272.442, p = 1.67e-28
+  Linearity (RESET-style on fitted values): F = 69.535, p = 9.56e-31
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_diagnostics_te_histogram_human_liver_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_diagnostics_residual_histogram_human_liver_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_diagnostics_residual_qq_human_liver_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_regression_diagnostics_residual_vs_fitted_human_liver_lasso.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_regression_diagnostics_stats_human_liver_lasso.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 7,208 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 72 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 12,020
+    Saved unmatched-key audit (7,280 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/join_audit_codon_vs_te_all_genes_human_liver_lasso.csv
+  All genes with TE (n=12,020): Pearson r = 0.7339 (p = 0), Spearman rho = 0.7496 (p = 0)
+  Autosomal genes only (n=11,613, training set): Pearson r = 0.7334 (p = 0), Spearman rho = 0.7495 (p = 0)
+  X-linked genes only (n=401, held out): Pearson r = 0.7367 (p = 8.88e-70), Spearman rho = 0.7247 (p = 1.62e-66)
+  Y-linked genes only (n=6, held out): Pearson r = 0.5307 (p = 0.279), Spearman rho = 0.4857 (p = 0.329)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_te_correlation_stats_human_liver_lasso.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_te_correlation_stats_spearman_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_all_genes_human_liver_lasso.png  (Pearson R = 0.7339, Pearson R² = 0.5386, p = 4.808e-2021, n = 12,020)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_all_genes_spearman_human_liver_lasso.png  (Spearman rho = 0.7496, Spearman rho² = 0.5618, p = 3.673e-2156, n = 12,020)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_autosomal_human_liver_lasso.png  (Pearson R = 0.7334, Pearson R² = 0.5379, p = 3.252e-1949, n = 11,613)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_autosomal_spearman_human_liver_lasso.png  (Spearman rho = 0.7495, Spearman rho² = 0.5618, p = 6.028e-2083, n = 11,613)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_X_linked_human_liver_lasso.png  (Pearson R = 0.7367, Pearson R² = 0.5427, p = 8.88e-70, n = 401)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_X_linked_spearman_human_liver_lasso.png  (Spearman rho = 0.7247, Spearman rho² = 0.5252, p = 1.623e-66, n = 401)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_Y_linked_human_liver_lasso.png  (Pearson R = 0.5307, Pearson R² = 0.2817, p = 2.787e-1, n = 6)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_vs_te_Y_linked_spearman_human_liver_lasso.png  (Spearman rho = 0.4857, Spearman rho² = 0.2359, p = 3.287e-1, n = 6)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 7,208 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 72 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (7,280 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/join_audit_codon_vs_te_output_table_human_liver_lasso.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_all_genes_human_liver_lasso.csv
+  [key uniqueness] co_mega_all_genes_human_liver.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_autosome_vs_X_human_liver_lasso.png  (Mann-Whitney U p = 0.000701, mean autosome = -1.023, mean X chromosome = -0.879)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_autosome_vs_X_vs_Y_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human liver, lasso)):
+    Autosome (n=18,351) vs X (n=834): p = 0.000617
+    Autosome (n=18,351) vs Y (n=43): p = 0.00114
+    X (n=834) vs Y (n=43): p = 0.00871
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_autosome_vs_X_vs_Y_stats_human_liver_lasso.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_codon_pearson_r_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_codon_pearson_r_barplot_human_liver_lasso.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_codon_spearman_rho_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_codon_pearson_r_barplot_spearman_human_liver_lasso.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  120 of 834 X-linked genes have a defined XCI status in the Gylemo table (714 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human liver, lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=120): p = 0.448
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_XCI_categories_full_Gylemo_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human liver, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=92): p = 0.24
+    Autosome (n=18,394) vs Xi-expressed (n=15): p = 0.491
+    Autosome (n=18,394) vs NPX-NPY (n=4): p = 0.379
+    Autosome (n=18,394) vs PAR1 (n=9): p = 0.0137
+    Xi-silent (n=92) vs Xi-expressed (n=15): p = 0.918
+    Xi-silent (n=92) vs NPX-NPY (n=4): p = 0.484
+    Xi-silent (n=92) vs PAR1 (n=9): p = 0.00447
+    Xi-expressed (n=15) vs NPX-NPY (n=4): p = 0.469
+    Xi-expressed (n=15) vs PAR1 (n=9): p = 0.00609
+    NPX-NPY (n=4) vs PAR1 (n=9): p = 0.0196
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_XCI_categories_full_stats_Gylemo_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_XCI_categories_reduced_Gylemo_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human liver, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=92): p = 0.24
+    Autosome (n=18,394) vs Xi-expressed (n=15): p = 0.491
+    Xi-silent (n=92) vs Xi-expressed (n=15): p = 0.918
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_XCI_categories_reduced_stats_Gylemo_human_liver_lasso.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  374 of 834 X-linked genes have a defined XCI status in the Neha table (460 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human liver, lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=374): p = 1.03e-07
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_XCI_categories_full_Neha_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human liver, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=307): p = 3.5e-07
+    Autosome (n=18,394) vs Xi-expressed (n=45): p = 0.00908
+    Autosome (n=18,394) vs NPX-NPY (n=10): p = 0.0843
+    Autosome (n=18,394) vs PAR1 (n=11): p = 0.0202
+    Autosome (n=18,394) vs PAR2 (n=1): p = 0.187
+    Xi-silent (n=307) vs Xi-expressed (n=45): p = 0.567
+    Xi-silent (n=307) vs NPX-NPY (n=10): p = 0.435
+    Xi-silent (n=307) vs PAR1 (n=11): p = 0.000796
+    Xi-silent (n=307) vs PAR2 (n=1): p = 0.11
+    Xi-expressed (n=45) vs NPX-NPY (n=10): p = 0.623
+    Xi-expressed (n=45) vs PAR1 (n=11): p = 0.000455
+    Xi-expressed (n=45) vs PAR2 (n=1): p = 0.087
+    NPX-NPY (n=10) vs PAR1 (n=11): p = 0.00435
+    NPX-NPY (n=10) vs PAR2 (n=1): p = 0.182
+    PAR1 (n=11) vs PAR2 (n=1): p = 0.667
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_XCI_categories_full_stats_Neha_human_liver_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_lasso/co_mega_boxplot_XCI_categories_reduced_Neha_human_liver_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human liver, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=307): p = 3.5e-07
+    Autosome (n=18,394) vs Xi-expressed (n=45): p = 0.00908
+    Xi-silent (n=307) vs Xi-expressed (n=45): p = 0.567
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_lasso/co_mega_XCI_categories_reduced_stats_Neha_human_liver_lasso.csv
+
+=== Done ===

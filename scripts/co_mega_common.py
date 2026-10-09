@@ -814,23 +814,57 @@ def make_autosome_x_y_group(chromosome_series):
     return np.where(chromosome_series == 'X', 'X', np.where(chromosome_series == 'Y', 'Y', 'Autosome'))
 
 
+WINSTON_FILE = "/lab/solexa_page/xueqi/general/genes_ancestral_x_by_strata_Winston.csv"
+CATEGORY_CLASSES = ('PAR1', 'PAR2', 'NPX-NPY')
+
+
+def winston_category_by_id(winston_file=WINSTON_FILE):
+    """
+    Ensembl gene ID -> 'PAR1' / 'PAR2' / 'NPX-NPY' from the Winston ancestral-X table (first line is a
+    title row): PAR1 / PAR2 from "Human Stratum", NPX-NPY from "Yes" in "X-Y Pair" (PAR takes
+    precedence). Defined by Ensembl ID because gene symbols in the XCI / CDS tables do not always agree
+    (e.g. FAM122B, TMSL2).
+    """
+    w = pd.read_csv(winston_file, skiprows=1, usecols=['Gene Symbol', 'X-Y Pair', 'Human Stratum', 'Human Ensembl ID'])
+    w = w.dropna(subset=['Gene Symbol', 'Human Ensembl ID']).drop_duplicates('Human Ensembl ID')
+    cat = pd.Series(np.where(w['X-Y Pair'] == 'Yes', 'NPX-NPY', None), index=w['Human Ensembl ID'].to_numpy(), dtype=object)
+    cat[(w['Human Stratum'] == 'PAR1').to_numpy()] = 'PAR1'
+    cat[(w['Human Stratum'] == 'PAR2').to_numpy()] = 'PAR2'
+    return cat.dropna()
+
+
 def build_xci_groups(df, xci_file, value_col='CO_Mega', group_col='is_X', exclude_values=()):
     """
-    Merge genes with `group_col` == 1 in `df` with a gene_name ->
-    classification table (`xci_file`, columns 'gene_name' and
-    'classification'), dropping any classification in `exclude_values` (e.g.
-    'No call'). Genes with `group_col` == 1 not found in the table are
-    excluded. Genes with `group_col` == 0 are labeled 'Autosome'. Returns
-    (groups_df, other_genes), where `groups_df` has columns
-    [value_col, 'classification'] ready for `plot_co_mega_by_group`, and
-    `other_genes` is the merged (post-exclusion) `group_col` == 1-only frame.
+    Label the `group_col` == 1 genes in `df` with an XCI classification and the
+    `group_col` == 0 genes 'Autosome'. Returns (groups_df, other_genes), where
+    `groups_df` has columns [value_col, 'classification'] ready for
+    `plot_co_mega_by_group`, and `other_genes` is the labelled `group_col` == 1
+    frame.
+
+    Xi-silent / Xi-expressed (and any other label) come from a gene_name ->
+    classification table (`xci_file`, columns 'gene_name' and 'classification'),
+    dropping any classification in `exclude_values` (e.g. 'No call'); genes not
+    found in the table are excluded. If `df` has an `ensembl_gene_id` column,
+    PAR1 / PAR2 / NPX-NPY are instead defined by Ensembl ID from the Winston
+    table (`winston_category_by_id`), identically for every XCI source: those
+    genes always get that category, whatever `xci_file` says. Without
+    `ensembl_gene_id`, the classification table's own PAR/NPX-NPY labels are used.
     """
     xci_df = pd.read_csv(xci_file, usecols=['gene_name', 'classification'])
-    other_genes = df.loc[df[group_col] == 1, ['gene_name', value_col]].merge(
-        xci_df, on='gene_name', how='inner'
-    )
-    if exclude_values:
-        other_genes = other_genes[~other_genes['classification'].isin(exclude_values)]
+    by_id = 'ensembl_gene_id' in df.columns
+    id_cols = ['ensembl_gene_id'] if by_id else []
+    x_df = df.loc[df[group_col] == 1, id_cols + ['gene_name', value_col]]
+
+    if by_id:
+        named = x_df.merge(xci_df[~xci_df['classification'].isin(CATEGORY_CLASSES)], on='gene_name', how='left')
+        named['classification'] = named['classification'].where(~named['classification'].isin(exclude_values))
+        category = named['ensembl_gene_id'].map(winston_category_by_id())
+        named['classification'] = category.where(category.notna(), named['classification'])
+        other_genes = named.dropna(subset=['classification'])
+    else:
+        other_genes = x_df.merge(xci_df, on='gene_name', how='inner')
+        if exclude_values:
+            other_genes = other_genes[~other_genes['classification'].isin(exclude_values)]
 
     auto_genes = df.loc[df[group_col] == 0, [value_col]].copy()
     auto_genes['classification'] = 'Autosome'
@@ -942,12 +976,19 @@ def bootstrap_codon_spearman_rho(codon_freq_df, te, codons=SENSE_CODONS, n_boot=
                                   random_state)
 
 
-def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_kind):
+# X-axis codon label colors when `color_by_third_base=True`
+THIRD_BASE_AT_COLOR = 'red'    # codon ends in A or T
+THIRD_BASE_GC_COLOR = 'black'  # codon ends in G or C
+
+
+def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_kind,
+                              color_by_third_base=False):
     """
     Shared implementation for `plot_codon_pearson_r_barplot` and
     `plot_codon_spearman_rho_barplot`: bar plot of each codon's correlation
     (`value_col`) with TE, sorted in descending order, with bootstrap-SD
-    error bars.
+    error bars. If `color_by_third_base`, the codon labels on the x axis are
+    red when the codon ends in A/T and black when it ends in G/C.
     """
     df_sorted = r_df.sort_values(value_col, ascending=False).reset_index(drop=True)
 
@@ -962,6 +1003,14 @@ def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_
     ax.set_title(title, fontweight='bold')
     ax.set_xticks(range(len(df_sorted)))
     ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
+    if color_by_third_base:
+        for tick, codon in zip(ax.get_xticklabels(), df_sorted['codon']):
+            tick.set_color(THIRD_BASE_AT_COLOR if codon[-1] in 'AT' else THIRD_BASE_GC_COLOR)
+        ax.legend(handles=[Line2D([], [], marker='s', linestyle='', color=THIRD_BASE_AT_COLOR,
+                                  label='codon label: ends in A/T'),
+                           Line2D([], [], marker='s', linestyle='', color=THIRD_BASE_GC_COLOR,
+                                  label='codon label: ends in G/C')],
+                  loc='upper center', fontsize=8, framealpha=0.9)
     ax.annotate(f"n = {int(df_sorted['n'].iloc[0]):,}\nerror bars = {error_kind} ({len(df_sorted):,} codons)",
                 xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
@@ -971,23 +1020,27 @@ def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_
     print(f"  Saved: {output_file}")
 
 
-def plot_codon_pearson_r_barplot(r_df, title, output_file):
+def plot_codon_pearson_r_barplot(r_df, title, output_file, color_by_third_base=False):
     """
     Bar plot of each codon's Pearson r with TE (from `bootstrap_codon_pearson_r`),
     sorted in descending order of r, with bootstrap-SD error bars.
+    `color_by_third_base`: color x-axis codon labels red (ends in A/T) or
+    black (ends in G/C).
     """
     _plot_codon_corr_barplot(r_df, 'pearson_r', title, output_file,
-                              'Pearson R between codon frequency and TE', 'bootstrap SD')
+                              'Pearson R between codon frequency and TE', 'bootstrap SD',
+                              color_by_third_base)
 
 
-def plot_codon_spearman_rho_barplot(r_df, title, output_file):
+def plot_codon_spearman_rho_barplot(r_df, title, output_file, color_by_third_base=False):
     """
     Spearman-rho analog of `plot_codon_pearson_r_barplot`: bar plot of each
     codon's Spearman rho with TE (from `bootstrap_codon_spearman_rho`),
     sorted in descending order of rho, with bootstrap-SD error bars.
     """
     _plot_codon_corr_barplot(r_df, 'spearman_rho', title, output_file,
-                              'Spearman rho between codon frequency and TE', 'bootstrap SD')
+                              'Spearman rho between codon frequency and TE', 'bootstrap SD',
+                              color_by_third_base)
 
 
 # ── Plot: per-codon Pearson r comparison between two species/tissues ──────

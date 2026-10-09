@@ -1,0 +1,238 @@
+=== Human vs. chicken CO_Mega, 1:1 orthologous genes ===
+
+[1] Loading orthologs and merging with human/chicken CO_Mega...
+  Loaded 12,856 human-chicken 1:1 orthologs.
+  [key uniqueness] co_mega_all_genes_human_liver.csv (HUMAN_CO_MEGA_FILE): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  [join audit] human-chicken orthologs (human Ensembl gene ID) (12,856 rows, key='ensembl_gene_id') x human CO_Mega (Ensembl gene ID) (19,228 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human-chicken orthologs (human Ensembl gene ID), 0 in human CO_Mega (Ensembl gene ID)
+    unmatched: 244 human-chicken orthologs (human Ensembl gene ID) keys with no match in human CO_Mega (Ensembl gene ID); 6,616 human CO_Mega (Ensembl gene ID) keys with no match in human-chicken orthologs (human Ensembl gene ID)
+    rows after merge ('inner'): 12,612
+    Saved unmatched-key audit (6,860 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/join_audit_orthologs_vs_human_co_mega.csv
+  [join audit] orthologs+human CO_Mega (12,612 rows, key='chicken_gene_id') x chicken CO_Mega (ID-based) (7,262 rows, key='chicken_gene_id'):
+    duplicated keys: 0 in orthologs+human CO_Mega, 0 in chicken CO_Mega (ID-based)
+    unmatched: 5,459 orthologs+human CO_Mega keys with no match in chicken CO_Mega (ID-based); 109 chicken CO_Mega (ID-based) keys with no match in orthologs+human CO_Mega
+    rows after merge ('inner'): 7,153
+    Saved unmatched-key audit (5,568 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/join_audit_orthologs_vs_chicken_co_mega.csv
+  7,153 orthologous genes have both a human liver and chicken liver CO_Mega.
+  6,963 autosomal, 190 X-linked, 0 Y-linked orthologous genes.
+  Saved merged ortholog CO_Mega table to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_human_chicken_orthologs.csv
+
+[2] Boxplots + CDFs: Autosome vs X (human classification)...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_human_liver.png  (Mann-Whitney U p = 1.42e-08, mean autosome = -1.071, mean X chromosome = -0.553)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_human_liver.png  (Mann-Whitney U p = 1.42e-08, mean autosome = -1.071, mean X chromosome = -0.553)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_chicken_liver.png  (Mann-Whitney U p = 0.029, mean autosome = -1.387, mean X chromosome = -1.251)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_chicken_liver.png  (Mann-Whitney U p = 0.029, mean autosome = -1.387, mean X chromosome = -1.251)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_normalized.png  (Mann-Whitney U p = 1.37e-08, mean autosome = 0.317, mean X chromosome = 0.698)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_normalized.png  (Mann-Whitney U p = 1.37e-08, mean autosome = 0.317, mean X chromosome = 0.698)
+
+[3] Boxplots (+ CDFs for log2-normalized score) by XCI category (Gylemo / Neha)...
+  [Human liver CO_Mega, Gylemo] 39 of 190 X-linked orthologous genes have a defined XCI status (151 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Gylemo_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega by XCI category (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.0282
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.697
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.253
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.195
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.543
+    Xi-silent (n=21) vs NPX-NPY (n=9): p = 0.619
+    Xi-silent (n=21) vs PAR1 (n=5): p = 0.0155
+    Xi-expressed (n=4) vs NPX-NPY (n=9): p = 0.825
+    Xi-expressed (n=4) vs PAR1 (n=5): p = 0.111
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.0599
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Gylemo_human_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Gylemo_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.0282
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.697
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.543
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Gylemo_human_liver.csv
+  [Human liver CO_Mega, Neha] 109 of 190 X-linked orthologous genes have a defined XCI status (81 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Neha_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega by XCI category (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 3.61e-08
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.198
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.253
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.195
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.0938
+    Xi-silent (n=79) vs NPX-NPY (n=9): p = 0.277
+    Xi-silent (n=79) vs PAR1 (n=5): p = 0.00478
+    Xi-expressed (n=16) vs NPX-NPY (n=9): p = 0.932
+    Xi-expressed (n=16) vs PAR1 (n=5): p = 0.0318
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.0599
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Neha_human_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Neha_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 3.61e-08
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.198
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.0938
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Neha_human_liver.csv
+  [Human's chicken-ortholog liver CO_Mega, Gylemo] 39 of 190 X-linked orthologous genes have a defined XCI status (151 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Gylemo_chicken_liver.png
+  Pairwise Mann-Whitney U p-values (Human's chicken-ortholog liver CO_Mega by XCI category (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.422
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.152
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.334
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.0247
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.452
+    Xi-silent (n=21) vs NPX-NPY (n=9): p = 0.684
+    Xi-silent (n=21) vs PAR1 (n=5): p = 0.2
+    Xi-expressed (n=4) vs NPX-NPY (n=9): p = 0.414
+    Xi-expressed (n=4) vs PAR1 (n=5): p = 0.556
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.364
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Gylemo_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Gylemo_chicken_liver.png
+  Pairwise Mann-Whitney U p-values (Human's chicken-ortholog liver CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.422
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.152
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.452
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Gylemo_chicken_liver.csv
+  [Human's chicken-ortholog liver CO_Mega, Neha] 109 of 190 X-linked orthologous genes have a defined XCI status (81 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Neha_chicken_liver.png
+  Pairwise Mann-Whitney U p-values (Human's chicken-ortholog liver CO_Mega by XCI category (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 0.129
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.867
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.334
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.0247
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.521
+    Xi-silent (n=79) vs NPX-NPY (n=9): p = 0.65
+    Xi-silent (n=79) vs PAR1 (n=5): p = 0.0932
+    Xi-expressed (n=16) vs NPX-NPY (n=9): p = 0.38
+    Xi-expressed (n=16) vs PAR1 (n=5): p = 0.05
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.364
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Neha_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Neha_chicken_liver.png
+  Pairwise Mann-Whitney U p-values (Human's chicken-ortholog liver CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 0.129
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.867
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.521
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Neha_chicken_liver.csv
+  [log2(Normalized exp(codon score)) (human / chicken), Gylemo] 39 of 190 X-linked orthologous genes have a defined XCI status (151 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Gylemo_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken) by XCI category (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.026
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.326
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.404
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.00122
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.0245
+    Xi-silent (n=21) vs NPX-NPY (n=9): p = 0.717
+    Xi-silent (n=21) vs PAR1 (n=5): p = 0.000882
+    Xi-expressed (n=4) vs NPX-NPY (n=9): p = 0.199
+    Xi-expressed (n=4) vs PAR1 (n=5): p = 0.111
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.012
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Gylemo_normalized.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Gylemo_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken): Autosome vs Xi-silent vs Xi-expressed (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.026
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.326
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.0245
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Gylemo_normalized.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_XCI_categories_full_Gylemo_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken) by XCI category (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.026
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.326
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.404
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.00122
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.0245
+    Xi-silent (n=21) vs NPX-NPY (n=9): p = 0.717
+    Xi-silent (n=21) vs PAR1 (n=5): p = 0.000882
+    Xi-expressed (n=4) vs NPX-NPY (n=9): p = 0.199
+    Xi-expressed (n=4) vs PAR1 (n=5): p = 0.111
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.012
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_XCI_categories_reduced_Gylemo_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken): Autosome vs Xi-silent vs Xi-expressed (Gylemo, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=21): p = 0.026
+    Autosome (n=6,963) vs Xi-expressed (n=4): p = 0.326
+    Xi-silent (n=21) vs Xi-expressed (n=4): p = 0.0245
+  [log2(Normalized exp(codon score)) (human / chicken), Neha] 109 of 190 X-linked orthologous genes have a defined XCI status (81 excluded).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_full_Neha_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken) by XCI category (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 1.48e-09
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.147
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.404
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.00122
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.194
+    Xi-silent (n=79) vs NPX-NPY (n=9): p = 0.22
+    Xi-silent (n=79) vs PAR1 (n=5): p = 2.1e-05
+    Xi-expressed (n=16) vs NPX-NPY (n=9): p = 0.932
+    Xi-expressed (n=16) vs PAR1 (n=5): p = 0.00187
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.012
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_full_stats_Neha_normalized.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_XCI_categories_reduced_Neha_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken): Autosome vs Xi-silent vs Xi-expressed (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 1.48e-09
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.147
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.194
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_XCI_categories_reduced_stats_Neha_normalized.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_XCI_categories_full_Neha_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken) by XCI category (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 1.48e-09
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.147
+    Autosome (n=6,963) vs NPX-NPY (n=9): p = 0.404
+    Autosome (n=6,963) vs PAR1 (n=5): p = 0.00122
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.194
+    Xi-silent (n=79) vs NPX-NPY (n=9): p = 0.22
+    Xi-silent (n=79) vs PAR1 (n=5): p = 2.1e-05
+    Xi-expressed (n=16) vs NPX-NPY (n=9): p = 0.932
+    Xi-expressed (n=16) vs PAR1 (n=5): p = 0.00187
+    NPX-NPY (n=9) vs PAR1 (n=5): p = 0.012
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_XCI_categories_reduced_Neha_normalized.png
+  Pairwise Mann-Whitney U p-values (log2(Normalized exp(codon score)) (human / chicken): Autosome vs Xi-silent vs Xi-expressed (Neha, human-chicken orthologs)):
+    Autosome (n=6,963) vs Xi-silent (n=79): p = 1.48e-09
+    Autosome (n=6,963) vs Xi-expressed (n=16): p = 0.147
+    Xi-silent (n=79) vs Xi-expressed (n=16): p = 0.194
+
+[4] Autosome vs X, restricted to X genes with defined XCI status (Xi-silent + Xi-expressed only)...
+  [Human liver CO_Mega, Gylemo] 25 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_human_liver.png  (Mann-Whitney U p = 0.0298, mean autosome = -1.071, mean X (Xi-silent + Xi-expressed) = -0.536)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_human_liver.png  (Mann-Whitney U p = 0.0298, mean autosome = -1.071, mean X (Xi-silent + Xi-expressed) = -0.536)
+  [Human liver CO_Mega, Neha] 95 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Neha_human_liver.png  (Mann-Whitney U p = 2.96e-08, mean autosome = -1.071, mean X (Xi-silent + Xi-expressed) = -0.359)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Neha_human_liver.png  (Mann-Whitney U p = 2.96e-08, mean autosome = -1.071, mean X (Xi-silent + Xi-expressed) = -0.359)
+  [Human's chicken-ortholog liver CO_Mega, Gylemo] 25 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_chicken_liver.png  (Mann-Whitney U p = 0.188, mean autosome = -1.387, mean X (Xi-silent + Xi-expressed) = -1.174)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_chicken_liver.png  (Mann-Whitney U p = 0.188, mean autosome = -1.387, mean X (Xi-silent + Xi-expressed) = -1.174)
+  [Human's chicken-ortholog liver CO_Mega, Neha] 95 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Neha_chicken_liver.png  (Mann-Whitney U p = 0.147, mean autosome = -1.387, mean X (Xi-silent + Xi-expressed) = -1.266)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Neha_chicken_liver.png  (Mann-Whitney U p = 0.147, mean autosome = -1.387, mean X (Xi-silent + Xi-expressed) = -1.266)
+  [log2(Normalized exp(codon score)) (human / chicken), Gylemo] 25 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_normalized.png  (Mann-Whitney U p = 0.102, mean autosome = 0.317, mean X (Xi-silent + Xi-expressed) = 0.638)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Gylemo_normalized.png  (Mann-Whitney U p = 0.102, mean autosome = 0.317, mean X (Xi-silent + Xi-expressed) = 0.638)
+  [log2(Normalized exp(codon score)) (human / chicken), Neha] 95 X-linked orthologous genes with defined XCI status (Xi-silent + Xi-expressed).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_orthologs_only_defined_XCI_Neha_normalized.png  (Mann-Whitney U p = 1.07e-09, mean autosome = 0.317, mean X (Xi-silent + Xi-expressed) = 0.907)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_orthologs_only_defined_XCI_Neha_normalized.png  (Mann-Whitney U p = 1.07e-09, mean autosome = 0.317, mean X (Xi-silent + Xi-expressed) = 0.907)
+
+[5] Autosome (split by chromosome) vs X...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_by_chromosome_vs_X_orthologs_only_human_liver.png
+  Saved chromosome-vs-X stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_autosome_by_chromosome_vs_X_orthologs_only_stats_human_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_by_chromosome_vs_X_orthologs_only_human_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_by_chromosome_vs_X_orthologs_only_chicken_liver.png
+  Saved chromosome-vs-X stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_autosome_by_chromosome_vs_X_orthologs_only_stats_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_by_chromosome_vs_X_orthologs_only_chicken_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_by_chromosome_vs_X_orthologs_only_normalized.png
+  Saved chromosome-vs-X stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_autosome_by_chromosome_vs_X_orthologs_only_stats_normalized.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_by_chromosome_vs_X_orthologs_only_normalized.png
+
+[6] For comparison: same Autosome-vs-X plots (combined + by-chromosome) using ALL human genes (human liver CO_Mega only)...
+  Loaded 19,228 human genes (all, not restricted to chicken orthologs): 18,351 autosomal, 834 X-linked, 43 Y-linked.
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_all_genes_human_liver.png  (Mann-Whitney U p = 0.000868, mean autosome = -1.021, mean X chromosome = -0.879)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_all_genes_human_liver.png  (Mann-Whitney U p = 0.000868, mean autosome = -1.021, mean X chromosome = -0.879)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_by_chromosome_vs_X_all_genes_human_liver.png
+  Saved chromosome-vs-X stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_autosome_by_chromosome_vs_X_all_genes_stats_human_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_by_chromosome_vs_X_all_genes_human_liver.png
+
+[6b] For comparison: Autosome vs X vs Y, using ALL human genes (human liver CO_Mega only)...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_boxplot_autosome_vs_X_vs_Y_all_genes_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega: Autosome vs X vs Y
+(all human genes)):
+    Autosome (n=18,351) vs X (n=834): p = 0.000764
+    Autosome (n=18,351) vs Y (n=43): p = 0.000844
+    X (n=834) vs Y (n=43): p = 0.00718
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_chicken_comparison/co_mega_autosome_vs_X_vs_Y_all_genes_stats_human_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_chicken_comparison/co_mega_cdf_autosome_vs_X_vs_Y_all_genes_human_liver.png
+  Pairwise Mann-Whitney U p-values (Human liver CO_Mega: Autosome vs X vs Y
+(all human genes)):
+    Autosome (n=18,351) vs X (n=834): p = 0.000764
+    Autosome (n=18,351) vs Y (n=43): p = 0.000844
+    X (n=834) vs Y (n=43): p = 0.00718
+
+=== Done ===

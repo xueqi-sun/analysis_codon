@@ -356,7 +356,7 @@ def main():
     print(f"  Saved per-codon Pearson r (+ bootstrap SD) to {out_codon_r}")
     plot_codon_pearson_r_barplot(
         r_df, f'Pearson R between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
-        fig("co_mega_codon_pearson_r_barplot")
+        fig("co_mega_codon_pearson_r_barplot"), color_by_third_base=True
     )
 
     print("\n[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...")
@@ -366,7 +366,7 @@ def main():
     print(f"  Saved per-codon Spearman rho (+ bootstrap SD) to {out_codon_rho}")
     plot_codon_spearman_rho_barplot(
         rho_df, f'Spearman rho between codon frequency and TE, per codon\n(autosomal training genes, {TISSUE_LABEL})',
-        fig("co_mega_codon_pearson_r_barplot_spearman")
+        fig("co_mega_codon_pearson_r_barplot_spearman"), color_by_third_base=True
     )
 
     print("\n[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...")
