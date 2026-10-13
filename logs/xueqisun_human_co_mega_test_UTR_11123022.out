@@ -1,0 +1,72 @@
+=== Human CO_Mega model, 5' UTR codons (human liver) ===
+
+[1] Computing codon frequencies from 5' UTR sequences...
+  Loaded 18,378 UTR rows from /lab/solexa_page/xueqi/analysis_codon/data/human_UTR_sequence.csv
+  Loaded 19,186 transcripts from /lab/solexa_page/xueqi/analysis_codon/data/human_CDS_sequence.csv
+  [key uniqueness] human_UTR_sequence.csv: 18,378 rows, 18,378 distinct 'tx_id' values; 0 values are duplicated (covering 0 rows).
+  [key uniqueness] human_CDS_sequence.csv: 19,186 rows, 19,186 distinct 'transcript_id' values; 0 values are duplicated (covering 0 rows).
+  [join audit] human 5' UTR (tx_id) (18,378 rows, key='tx_id') x human CDS table (transcript_id) (19,186 rows, key='transcript_id'):
+    duplicated keys: 0 in human 5' UTR (tx_id), 0 in human CDS table (transcript_id)
+    unmatched: 0 human 5' UTR (tx_id) keys with no match in human CDS table (transcript_id); 808 human CDS table (transcript_id) keys with no match in human 5' UTR (tx_id)
+    rows after merge ('inner'): 18,378
+    Saved unmatched-key audit (808 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/join_audit_utr_vs_cds_table_human_liver_UTR.csv
+  18,378 transcripts with both a UTR and gene/chromosome annotation.
+  12,280 UTRs are not a multiple of 3 and will be trimmed (last 1-2 nt dropped).
+  Dropped 39 transcripts with missing/too-short (<3 nt) UTRs; 18,339 remain.
+  17,534 autosomal (chr 1-22) genes, 805 X-linked, 0 Y-linked.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/codon_frequencies_human_liver_UTR.csv
+
+[2] Loading human liver TE data...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 12,086 rows, 12,086 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  12,092 genes with TE_mean (6 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/human_liver/chromosome_te_analysis_Y.csv).
+  [join audit] human UTR codon frequencies (Ensembl gene ID) (18,339 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human UTR codon frequencies (Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 6,627 human UTR codon frequencies (Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 380 human TE (Ensembl gene ID) keys with no match in human UTR codon frequencies (Ensembl gene ID)
+    rows after merge ('inner'): 11,712
+    Saved unmatched-key audit (7,007 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/join_audit_codon_vs_te_train_human_liver_UTR.csv
+  11,712 genes with both UTR codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ UTR codon frequencies on autosomal genes...
+  Training on 11,319 autosomal genes, 61 codon predictors.
+  R^2 = 0.1208   Adjusted R^2 = 0.1160   n = 11319
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/co_mega_model_coefficients_human_liver_UTR.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_fit_train_human_liver_UTR.png  (Pearson R = 0.3476, Pearson R² = 0.1208, p = 8.414e-319, n = 11,319)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_fit_train_spearman_human_liver_UTR.png  (Spearman rho = 0.3707, Spearman rho² = 0.1374, p = 1.169e-365, n = 11,319)
+
+[3b] Regression diagnostics...
+  --- Regression diagnostics (autosomal training genes, Human liver, 5' UTR) ---
+  Normality of TE (actual, log2 scale, n=11,319): skew = 0.078, excess kurtosis = 0.247, D'Agostino K^2 p = 2.56e-08, Jarque-Bera p = 1.6e-09
+  Normality of residuals: skew = 0.085, excess kurtosis = 0.370, D'Agostino K^2 p = 7.1e-14, Jarque-Bera p = 1.08e-17
+  Homoscedasticity (Breusch-Pagan): LM stat = 245.029, p = 6.75e-24
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 108.012, p = 3.43e-47
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_diagnostics_te_histogram_human_liver_UTR.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_diagnostics_residual_histogram_human_liver_UTR.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_diagnostics_residual_qq_human_liver_UTR.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_regression_diagnostics_residual_vs_fitted_human_liver_UTR.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/co_mega_regression_diagnostics_stats_human_liver_UTR.csv
+
+[4] Computing CO_Mega for all genes and comparing to TE...
+  [join audit] human UTR codon frequencies (all genes) (18,339 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human UTR codon frequencies (all genes), 0 in human TE (Ensembl gene ID)
+    unmatched: 6,627 human UTR codon frequencies (all genes) keys with no match in human TE (Ensembl gene ID); 380 human TE (Ensembl gene ID) keys with no match in human UTR codon frequencies (all genes)
+    rows after merge ('inner'): 11,712
+    Saved unmatched-key audit (7,007 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/join_audit_codon_vs_te_all_genes_human_liver_UTR.csv
+  All genes (n=11,712): Pearson r = 0.3478 (p = 0), Spearman rho = 0.3694 (p = 0)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_all_genes_human_liver_UTR.png  (Pearson R = 0.3478, Pearson R² = 0.1210, p = 2.918e-330, n = 11,712)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_all_genes_spearman_human_liver_UTR.png  (Spearman rho = 0.3694, Spearman rho² = 0.1365, p = 1.393e-375, n = 11,712)
+  Autosomal genes (n=11,319): Pearson r = 0.3476 (p = 8.41e-319), Spearman rho = 0.3707 (p = 0)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_autosomal_human_liver_UTR.png  (Pearson R = 0.3476, Pearson R² = 0.1208, p = 8.414e-319, n = 11,319)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_autosomal_spearman_human_liver_UTR.png  (Spearman rho = 0.3707, Spearman rho² = 0.1374, p = 1.169e-365, n = 11,319)
+  X-linked genes (n=393): Pearson r = 0.3227 (p = 5.62e-11), Spearman rho = 0.2915 (p = 3.89e-09)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_X_linked_human_liver_UTR.png  (Pearson R = 0.3227, Pearson R² = 0.1041, p = 5.623e-11, n = 393)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_vs_te_X_linked_spearman_human_liver_UTR.png  (Spearman rho = 0.2915, Spearman rho² = 0.0850, p = 3.886e-9, n = 393)
+  [join audit] human UTR codon frequencies (all genes, for output table) (18,339 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (12,092 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human UTR codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 6,627 human UTR codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 380 human TE (Ensembl gene ID) keys with no match in human UTR codon frequencies (all genes, for output table)
+    rows after merge ('left'): 18,339
+    Saved unmatched-key audit (7,007 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/join_audit_codon_vs_te_output_table_human_liver_UTR.csv
+  Saved CO_Mega for all 18,339 genes to /lab/solexa_page/xueqi/analysis_codon/tables/human_UTR/co_mega_all_genes_human_liver_UTR.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_UTR/co_mega_boxplot_autosome_vs_X_human_liver_UTR.png  (Mann-Whitney U p = 1.39e-16, mean autosome = -0.945, mean X chromosome = -0.789)
+
+=== Done ===

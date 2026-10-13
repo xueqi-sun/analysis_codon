@@ -1,0 +1,152 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/human_co_mega_analysis_ribonn.py:191: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, skeletal_muscle) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/codon_frequencies_ribonn_skeletal_muscle.csv
+
+[2] Loading ribonn TE data (skeletal_muscle)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 4,811 rows, 4,811 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  4,811 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/skeletal_muscle/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (4,811 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 14,424 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 7 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 4,804
+    Saved unmatched-key audit (14,431 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/join_audit_codon_vs_te_train_ribonn_skeletal_muscle.csv
+  4,804 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies on autosomal genes...
+  Training on 4,650 autosomal genes, 61 codon predictors.
+  R^2 = 0.2173   Adjusted R^2 = 0.2069   n = 4650
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_model_coefficients_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_fit_train_ribonn_skeletal_muscle.png  (Pearson R = 0.4661, Pearson R² = 0.2173, p = 1.357e-249, n = 4,650)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_fit_train_spearman_ribonn_skeletal_muscle.png  (Spearman rho = 0.4527, Spearman rho² = 0.2049, p = 9.847e-234, n = 4,650)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (autosomal training genes, Human skeletal muscle (ribonn)) ---
+  Normality of TE (actual, log2 scale, n=4,650): skew = -0.235, excess kurtosis = -0.141, D'Agostino K^2 p = 9.4e-11, Jarque-Bera p = 7.01e-11
+  Normality of residuals: skew = -0.333, excess kurtosis = -0.050, D'Agostino K^2 p = 1.31e-18, Jarque-Bera p = 1.65e-19
+  Homoscedasticity (Breusch-Pagan): LM stat = 91.913, p = 0.00642
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 0.370, p = 0.691
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_diagnostics_te_histogram_ribonn_skeletal_muscle.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_diagnostics_residual_histogram_ribonn_skeletal_muscle.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_diagnostics_residual_qq_ribonn_skeletal_muscle.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_skeletal_muscle.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_regression_diagnostics_stats_ribonn_skeletal_muscle.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (4,811 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 14,424 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 7 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 4,804
+    Saved unmatched-key audit (14,431 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/join_audit_codon_vs_te_all_genes_ribonn_skeletal_muscle.csv
+  All genes with TE (n=4,804): Pearson r = 0.4630 (p = 6.07e-254), Spearman rho = 0.4492 (p = 2.74e-237)
+  Autosomal genes only (n=4,650, training set): Pearson r = 0.4661 (p = 1.36e-249), Spearman rho = 0.4527 (p = 9.85e-234)
+  X-linked genes only (n=154, held out): Pearson r = 0.3599 (p = 4.54e-06), Spearman rho = 0.3415 (p = 1.46e-05)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_te_correlation_stats_ribonn_skeletal_muscle.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_te_correlation_stats_spearman_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_all_genes_ribonn_skeletal_muscle.png  (Pearson R = 0.4630, Pearson R² = 0.2144, p = 6.072e-254, n = 4,804)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_all_genes_spearman_ribonn_skeletal_muscle.png  (Spearman rho = 0.4492, Spearman rho² = 0.2018, p = 2.737e-237, n = 4,804)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_autosomal_ribonn_skeletal_muscle.png  (Pearson R = 0.4661, Pearson R² = 0.2173, p = 1.357e-249, n = 4,650)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_autosomal_spearman_ribonn_skeletal_muscle.png  (Spearman rho = 0.4527, Spearman rho² = 0.2049, p = 9.847e-234, n = 4,650)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_X_linked_ribonn_skeletal_muscle.png  (Pearson R = 0.3599, Pearson R² = 0.1296, p = 4.539e-6, n = 154)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_vs_te_X_linked_spearman_ribonn_skeletal_muscle.png  (Spearman rho = 0.3415, Spearman rho² = 0.1167, p = 1.457e-5, n = 154)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (4,811 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 14,424 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 7 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (14,431 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/join_audit_codon_vs_te_output_table_ribonn_skeletal_muscle.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_all_genes_ribonn_skeletal_muscle.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_autosome_vs_X_ribonn_skeletal_muscle.png  (Mann-Whitney U p = 0.00534, mean autosome = 2.389, mean X chromosome = 2.318)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human skeletal muscle (ribonn))):
+    Autosome (n=18,351) vs X (n=834): p = 0.00492
+    Autosome (n=18,351) vs Y (n=43): p = 0.0133
+    X (n=834) vs Y (n=43): p = 0.0551
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_autosome_vs_X_vs_Y_stats_ribonn_skeletal_muscle.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_codon_pearson_r_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_codon_pearson_r_barplot_ribonn_skeletal_muscle.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_codon_spearman_rho_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_codon_pearson_r_barplot_spearman_ribonn_skeletal_muscle.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.171
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.734
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.168
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.659
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.000367
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.178
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.148
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.495
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.000214
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.138
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.218
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.308
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.222
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.00656
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.407
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.0261
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_XCI_categories_full_stats_Gylemo_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.734
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.168
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.148
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_skeletal_muscle.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 0.233
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_XCI_categories_full_Neha_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.241
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0296
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.659
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.000367
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.178
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.056
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.867
+    Xi-silent (n=297) vs PAR1 (n=16): p = 4.92e-05
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.193
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.438
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 2.52e-05
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.313
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.00656
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.407
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.0261
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_XCI_categories_full_stats_Neha_ribonn_skeletal_muscle.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/skeletal_muscle/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_skeletal_muscle.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human skeletal muscle (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.241
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0296
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.056
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/skeletal_muscle/co_mega_XCI_categories_reduced_stats_Neha_ribonn_skeletal_muscle.csv
+
+=== Done ===

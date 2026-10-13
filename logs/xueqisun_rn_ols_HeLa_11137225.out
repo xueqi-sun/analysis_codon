@@ -1,0 +1,152 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/human_co_mega_analysis_ribonn.py:191: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, HeLa) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/codon_frequencies_ribonn_HeLa.csv
+
+[2] Loading ribonn TE data (HeLa)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 10,155 rows, 10,155 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  10,155 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/HeLa/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,155 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,093 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 10,135
+    Saved unmatched-key audit (9,113 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/join_audit_codon_vs_te_train_ribonn_HeLa.csv
+  10,135 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies on autosomal genes...
+  Training on 9,793 autosomal genes, 61 codon predictors.
+  R^2 = 0.2747   Adjusted R^2 = 0.2701   n = 9793
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_model_coefficients_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_fit_train_ribonn_HeLa.png  (Pearson R = 0.5241, Pearson R² = 0.2747, p = 2.956e-685, n = 9,793)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_fit_train_spearman_ribonn_HeLa.png  (Spearman rho = 0.5054, Spearman rho² = 0.2555, p = 1.078e-629, n = 9,793)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (autosomal training genes, Human HeLa (ribonn)) ---
+  Normality of TE (actual, log2 scale, n=9,793): skew = 0.077, excess kurtosis = 0.179, D'Agostino K^2 p = 2.89e-05, Jarque-Bera p = 1.19e-05
+  Normality of residuals: skew = -0.101, excess kurtosis = 0.505, D'Agostino K^2 p = 4.25e-19, Jarque-Bera p = 6.47e-27
+  Homoscedasticity (Breusch-Pagan): LM stat = 217.180, p = 2.23e-19
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 78.792, p = 1.14e-34
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_diagnostics_te_histogram_ribonn_HeLa.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_diagnostics_residual_histogram_ribonn_HeLa.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_diagnostics_residual_qq_ribonn_HeLa.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_HeLa.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_regression_diagnostics_stats_ribonn_HeLa.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,155 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,093 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 10,135
+    Saved unmatched-key audit (9,113 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/join_audit_codon_vs_te_all_genes_ribonn_HeLa.csv
+  All genes with TE (n=10,135): Pearson r = 0.5241 (p = 0), Spearman rho = 0.5057 (p = 0)
+  Autosomal genes only (n=9,793, training set): Pearson r = 0.5241 (p = 0), Spearman rho = 0.5054 (p = 0)
+  X-linked genes only (n=342, held out): Pearson r = 0.4921 (p = 2.92e-22), Spearman rho = 0.4844 (p = 1.61e-21)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_te_correlation_stats_ribonn_HeLa.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_te_correlation_stats_spearman_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_all_genes_ribonn_HeLa.png  (Pearson R = 0.5241, Pearson R² = 0.2747, p = 2.612e-709, n = 10,135)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_all_genes_spearman_ribonn_HeLa.png  (Spearman rho = 0.5057, Spearman rho² = 0.2557, p = 1.866e-652, n = 10,135)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_autosomal_ribonn_HeLa.png  (Pearson R = 0.5241, Pearson R² = 0.2747, p = 2.956e-685, n = 9,793)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_autosomal_spearman_ribonn_HeLa.png  (Spearman rho = 0.5054, Spearman rho² = 0.2555, p = 1.078e-629, n = 9,793)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_X_linked_ribonn_HeLa.png  (Pearson R = 0.4921, Pearson R² = 0.2422, p = 2.916e-22, n = 342)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_vs_te_X_linked_spearman_ribonn_HeLa.png  (Spearman rho = 0.4844, Spearman rho² = 0.2346, p = 1.606e-21, n = 342)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,155 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,093 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (9,113 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/join_audit_codon_vs_te_output_table_ribonn_HeLa.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_all_genes_ribonn_HeLa.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_autosome_vs_X_ribonn_HeLa.png  (Mann-Whitney U p = 1.04e-08, mean autosome = 0.220, mean X chromosome = 0.302)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human HeLa (ribonn))):
+    Autosome (n=18,351) vs X (n=834): p = 1.02e-08
+    Autosome (n=18,351) vs Y (n=43): p = 0.602
+    X (n=834) vs Y (n=43): p = 0.347
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_autosome_vs_X_vs_Y_stats_ribonn_HeLa.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_codon_pearson_r_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_codon_pearson_r_barplot_ribonn_HeLa.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_codon_spearman_rho_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_codon_pearson_r_barplot_spearman_ribonn_HeLa.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.00441
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0301
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.693
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.0862
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.401
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.94
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.929
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.799
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.884
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.784
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.651
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.922
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.5
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.757
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.659
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.732
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_XCI_categories_full_stats_Gylemo_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0301
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.693
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.929
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_HeLa.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 2.74e-08
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_XCI_categories_full_Neha_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 4.33e-07
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.129
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.0862
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.401
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.94
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.763
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.969
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.647
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.701
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.919
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.851
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.774
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.757
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.659
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.732
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_XCI_categories_full_stats_Neha_ribonn_HeLa.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HeLa/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_HeLa.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human HeLa (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 4.33e-07
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.129
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.763
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HeLa/co_mega_XCI_categories_reduced_stats_Neha_ribonn_HeLa.csv
+
+=== Done ===

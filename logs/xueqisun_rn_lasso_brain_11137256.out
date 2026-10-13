@@ -1,0 +1,151 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/human_co_mega_test_lasso_ribonn.py:292: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, brain) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/codon_frequencies_ribonn_brain_lasso.csv
+
+[2] Loading ribonn TE data (brain)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 9,435 rows, 9,435 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  9,435 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/brain/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,435 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,808 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 15 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 9,420
+    Saved unmatched-key audit (9,823 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/join_audit_codon_vs_te_train_ribonn_brain_lasso.csv
+  9,420 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies (LASSO) on autosomal genes...
+  Training on 9,095 autosomal genes, 61 codon predictors.
+  R^2 = 0.1707   Adjusted R^2 = 0.1654   n = 9095
+  Lasso alpha (10-fold CV) = 0.00154; 58 of 61 codons have non-zero coefficients.
+  Saved intercept + 61 lasso codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_model_coefficients_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_fit_train_ribonn_brain_lasso.png  (Pearson R = 0.4133, Pearson R² = 0.1708, p = 3.366e-372, n = 9,095)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_fit_train_spearman_ribonn_brain_lasso.png  (Spearman rho = 0.4141, Spearman rho² = 0.1715, p = 6.714e-374, n = 9,095)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Lasso regression diagnostics (autosomal training genes, Human brain (ribonn), lasso) ---
+  Normality of residuals: skew = -0.254, excess kurtosis = 1.101, D'Agostino K^2 p = 3.22e-65
+  Homoscedasticity (Breusch-Pagan): LM stat = 211.203, p = 1.96e-18
+  Linearity (RESET-style on fitted values): F = 5.302, p = 0.005
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_diagnostics_te_histogram_ribonn_brain_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_diagnostics_residual_histogram_ribonn_brain_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_diagnostics_residual_qq_ribonn_brain_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_brain_lasso.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_regression_diagnostics_stats_ribonn_brain_lasso.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,435 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,808 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 15 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 9,420
+    Saved unmatched-key audit (9,823 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/join_audit_codon_vs_te_all_genes_ribonn_brain_lasso.csv
+  All genes with TE (n=9,420): Pearson r = 0.4122 (p = 0), Spearman rho = 0.4134 (p = 0)
+  Autosomal genes only (n=9,095, training set): Pearson r = 0.4133 (p = 0), Spearman rho = 0.4141 (p = 0)
+  X-linked genes only (n=325, held out): Pearson r = 0.3533 (p = 5.5e-11), Spearman rho = 0.3687 (p = 6.69e-12)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_te_correlation_stats_ribonn_brain_lasso.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_te_correlation_stats_spearman_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_all_genes_ribonn_brain_lasso.png  (Pearson R = 0.4122, Pearson R² = 0.1699, p = 2.582e-383, n = 9,420)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_all_genes_spearman_ribonn_brain_lasso.png  (Spearman rho = 0.4134, Spearman rho² = 0.1709, p = 1.044e-385, n = 9,420)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_autosomal_ribonn_brain_lasso.png  (Pearson R = 0.4133, Pearson R² = 0.1708, p = 3.366e-372, n = 9,095)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_autosomal_spearman_ribonn_brain_lasso.png  (Spearman rho = 0.4141, Spearman rho² = 0.1715, p = 6.714e-374, n = 9,095)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_X_linked_ribonn_brain_lasso.png  (Pearson R = 0.3533, Pearson R² = 0.1248, p = 5.498e-11, n = 325)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_vs_te_X_linked_spearman_ribonn_brain_lasso.png  (Spearman rho = 0.3687, Spearman rho² = 0.1359, p = 6.686e-12, n = 325)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,435 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,808 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 15 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (9,823 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/join_audit_codon_vs_te_output_table_ribonn_brain_lasso.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_all_genes_ribonn_brain_lasso.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_autosome_vs_X_ribonn_brain_lasso.png  (Mann-Whitney U p = 0.0395, mean autosome = 0.526, mean X chromosome = 0.569)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human brain (ribonn), lasso)):
+    Autosome (n=18,351) vs X (n=834): p = 0.0382
+    Autosome (n=18,351) vs Y (n=43): p = 0.167
+    X (n=834) vs Y (n=43): p = 0.391
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_autosome_vs_X_vs_Y_stats_ribonn_brain_lasso.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_codon_pearson_r_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_codon_pearson_r_barplot_ribonn_brain_lasso.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_codon_spearman_rho_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_codon_pearson_r_barplot_spearman_ribonn_brain_lasso.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.239
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.284
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.808
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.455
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.984
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.667
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.472
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.98
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.612
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.745
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.485
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 1
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.889
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.488
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.807
+    PAR1 (n=16) vs PAR2 (n=2): p = 1
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_XCI_categories_full_stats_Gylemo_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.284
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.808
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.472
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_brain_lasso.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 0.00105
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_XCI_categories_full_Neha_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.00391
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0977
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.455
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.984
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.667
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.582
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.713
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.481
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.747
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.585
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.263
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.973
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.488
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.807
+    PAR1 (n=16) vs PAR2 (n=2): p = 1
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_XCI_categories_full_stats_Neha_ribonn_brain_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/brain/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_brain_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human brain (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.00391
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0977
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.582
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/brain/co_mega_XCI_categories_reduced_stats_Neha_ribonn_brain_lasso.csv
+
+=== Done ===

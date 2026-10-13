@@ -1,0 +1,152 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (human fibroblast TE) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/codon_frequencies_human_fibroblast_lasso.csv
+
+[2] Loading human fibroblast TE data...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 16,393 rows, 16,393 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  16,403 genes with TE_mean (10 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/human_fibroblast/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (16,403 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 3,386 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 561 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 15,842
+    Saved unmatched-key audit (3,947 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/join_audit_codon_vs_te_train_human_fibroblast_lasso.csv
+  15,842 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies (LASSO) on autosomal genes...
+  Training on 15,266 autosomal genes, 61 codon predictors.
+  R^2 = 0.0933   Adjusted R^2 = 0.0904   n = 15266
+  Lasso alpha (10-fold CV) = 0.00701; 49 of 61 codons have non-zero coefficients.
+  Saved intercept + 61 lasso codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_model_coefficients_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_fit_train_human_fibroblast_lasso.png  (Pearson R = 0.3063, Pearson R² = 0.0938, p = 5.516e-329, n = 15,266)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_fit_train_spearman_human_fibroblast_lasso.png  (Spearman rho = 0.3145, Spearman rho² = 0.0989, p = 1.599e-347, n = 15,266)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Lasso regression diagnostics (autosomal training genes, Human fibroblast, lasso) ---
+  Normality of residuals: skew = -0.818, excess kurtosis = 4.862, D'Agostino K^2 p = 0
+  Homoscedasticity (Breusch-Pagan): LM stat = 606.830, p = 6.45e-91
+  Linearity (RESET-style on fitted values): F = 38.922, p = 1.38e-17
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_diagnostics_te_histogram_human_fibroblast_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_diagnostics_residual_histogram_human_fibroblast_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_diagnostics_residual_qq_human_fibroblast_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_regression_diagnostics_residual_vs_fitted_human_fibroblast_lasso.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_regression_diagnostics_stats_human_fibroblast_lasso.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (16,403 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 3,386 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 561 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 15,842
+    Saved unmatched-key audit (3,947 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/join_audit_codon_vs_te_all_genes_human_fibroblast_lasso.csv
+  All genes with TE (n=15,842): Pearson r = 0.3028 (p = 0), Spearman rho = 0.3115 (p = 0)
+  Autosomal genes only (n=15,266, training set): Pearson r = 0.3063 (p = 0), Spearman rho = 0.3145 (p = 0)
+  X-linked genes only (n=566, held out): Pearson r = 0.2043 (p = 9.49e-07), Spearman rho = 0.2336 (p = 1.87e-08)
+  Y-linked genes only (n=10, held out): Pearson r = 0.3014 (p = 0.397), Spearman rho = 0.3455 (p = 0.328)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_te_correlation_stats_human_fibroblast_lasso.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_te_correlation_stats_spearman_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_all_genes_human_fibroblast_lasso.png  (Pearson R = 0.3028, Pearson R² = 0.0917, p = 2.989e-333, n = 15,842)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_all_genes_spearman_human_fibroblast_lasso.png  (Spearman rho = 0.3115, Spearman rho² = 0.0971, p = 1.457e-353, n = 15,842)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_autosomal_human_fibroblast_lasso.png  (Pearson R = 0.3063, Pearson R² = 0.0938, p = 5.516e-329, n = 15,266)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_autosomal_spearman_human_fibroblast_lasso.png  (Spearman rho = 0.3145, Spearman rho² = 0.0989, p = 1.599e-347, n = 15,266)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_X_linked_human_fibroblast_lasso.png  (Pearson R = 0.2043, Pearson R² = 0.0417, p = 9.492e-7, n = 566)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_X_linked_spearman_human_fibroblast_lasso.png  (Spearman rho = 0.2336, Spearman rho² = 0.0546, p = 1.867e-8, n = 566)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_Y_linked_human_fibroblast_lasso.png  (Pearson R = 0.3014, Pearson R² = 0.0908, p = 3.974e-1, n = 10)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_vs_te_Y_linked_spearman_human_fibroblast_lasso.png  (Spearman rho = 0.3455, Spearman rho² = 0.1193, p = 3.282e-1, n = 10)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (16,403 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 3,386 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 561 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (3,947 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/join_audit_codon_vs_te_output_table_human_fibroblast_lasso.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_all_genes_human_fibroblast_lasso.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_autosome_vs_X_human_fibroblast_lasso.png  (Mann-Whitney U p = 0.03, mean autosome = -1.795, mean X chromosome = -1.773)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_autosome_vs_X_vs_Y_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human fibroblast, lasso)):
+    Autosome (n=18,351) vs X (n=834): p = 0.0308
+    Autosome (n=18,351) vs Y (n=43): p = 0.381
+    X (n=834) vs Y (n=43): p = 0.145
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_autosome_vs_X_vs_Y_stats_human_fibroblast_lasso.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_codon_pearson_r_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_codon_pearson_r_barplot_human_fibroblast_lasso.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_codon_spearman_rho_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_codon_pearson_r_barplot_spearman_human_fibroblast_lasso.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.000188
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_XCI_categories_full_Gylemo_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0313
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.104
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.182
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.000771
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.832
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.376
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.782
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.0127
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.602
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.442
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.492
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.333
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.0823
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.612
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.209
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_XCI_categories_full_stats_Gylemo_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_XCI_categories_reduced_Gylemo_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0313
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.104
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.376
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_XCI_categories_reduced_stats_Gylemo_human_fibroblast_lasso.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 0.00793
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_XCI_categories_full_Neha_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.104
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.556
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.182
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.000771
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.832
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.947
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.346
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.00263
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.747
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.475
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.00417
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.558
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.0823
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.612
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.209
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_XCI_categories_full_stats_Neha_human_fibroblast_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/human_fibroblast_lasso/co_mega_boxplot_XCI_categories_reduced_Neha_human_fibroblast_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human fibroblast, lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 0.104
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.556
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.947
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/human_fibroblast_lasso/co_mega_XCI_categories_reduced_stats_Neha_human_fibroblast_lasso.csv
+
+=== Done ===

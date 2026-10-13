@@ -34,7 +34,7 @@ from scipy import stats
 
 from co_mega import SENSE_CODONS, compute_co_mega
 from co_mega_common import (
-    precise_pvalue_str, fit_co_mega_te_model, save_coefficient_table,
+    precise_pvalue_str, chromosome_groups, fit_co_mega_te_model, save_coefficient_table,
     plot_actual_vs_predicted, plot_actual_vs_predicted_spearman,
     run_regression_diagnostics, audit_join, check_key_uniqueness, plot_co_mega_boxplot,
 )
@@ -211,10 +211,12 @@ def main():
         if len(sub) < 2:
             continue
         title = f'Actual TE vs. CO_Mega (5\' UTR): {label} ({TISSUE_LABEL})'
+        grp = chromosome_groups(sub) if key == 'all_genes' else None  # autosome / X colors on the all-genes scatter
         plot_actual_vs_predicted(sub['TE_mean'], sub['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
-                                 title, s['r'], s['p_r_str'], fig(f"co_mega_vs_te_{key}"))
+                                 title, s['r'], s['p_r_str'], fig(f"co_mega_vs_te_{key}"), groups=grp)
         plot_actual_vs_predicted_spearman(sub['TE_mean'], sub['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
-                                          title, s['rho'], s['p_rho_str'], fig(f"co_mega_vs_te_{key}_spearman"))
+                                          title, s['rho'], s['p_rho_str'], fig(f"co_mega_vs_te_{key}_spearman"),
+                                          groups=grp)
 
     pd.DataFrame([{'gene_set': s['label'], 'n': s['n'], 'pearson_r': s['r'], 'p_value': s['p_r_str']}
                   for s in rows]).to_csv(tbl("co_mega_te_correlation_stats"), index=False)

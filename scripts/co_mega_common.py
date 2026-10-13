@@ -19,6 +19,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from scipy import stats
 import mpmath
 
@@ -403,21 +404,42 @@ def run_regression_diagnostics(model, y, title_suffix, hist_te_file, hist_resid_
 
 
 # ── Plot: predicted vs. actual / CO_Mega scatter ────────────────────────────
+def chromosome_groups(df, chromosome_col='chromosome'):
+    """
+    Per-gene group label for `plot_actual_vs_predicted(..., groups=...)`: 'X', 'Y' or 'Z' for genes on
+    that chromosome, 'Autosome' for everything else.
+    """
+    chrom = df[chromosome_col].astype(str)
+    return np.where(chrom.isin(['X', 'Y', 'Z']), chrom, 'Autosome')
+
+
 def _plot_actual_vs_predicted_impl(actual, predicted, actual_label, predicted_label, title, stat_value, p_str,
-                                    output_file, stat_symbol, stat_name):
+                                    output_file, stat_symbol, stat_name, groups=None):
     """
     Shared implementation for `plot_actual_vs_predicted` (Pearson R) and
     `plot_actual_vs_predicted_spearman` (Spearman rho) -- see those for
     details. `stat_symbol` (e.g. 'R' or '\u03c1') is used in the plot
     annotation; `stat_name` (e.g. 'Pearson R' or 'Spearman rho') is used in
-    the printed summary line.
+    the printed summary line. If `groups` (one label per point, e.g. from `chromosome_groups`) is given,
+    the points are colored by group with the same colors as the Autosome / X / Y(/Z) boxplots
+    (`_NAMED_GROUP_COLORS`), autosomes drawn first so the (fewer) sex-chromosome genes stay visible;
+    the R / n annotation still refers to all points.
     """
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     stat_squared = stat_value ** 2
 
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(predicted, actual, s=8, alpha=0.3, color='#377EB8', edgecolor='none')
+    if groups is None:
+        ax.scatter(predicted, actual, s=8, alpha=0.3, color='#377EB8', edgecolor='none')
+    else:
+        groups = np.asarray(groups).astype(str)
+        for g in ['Autosome', 'X', 'Y', 'Z']:
+            m = groups == g
+            if m.any():
+                ax.scatter(predicted[m], actual[m], s=8 if g == 'Autosome' else 12,
+                           alpha=0.3 if g == 'Autosome' else 0.7, color=_NAMED_GROUP_COLORS[g],
+                           edgecolor='none', label=f'{g} (n={int(m.sum()):,})')
     lims = [min(actual.min(), predicted.min()), max(actual.max(), predicted.max())]
     ax.plot(lims, lims, color='gray', linestyle='--', linewidth=1, label='y = x')
     ax.set_xlim(lims)
@@ -438,7 +460,8 @@ def _plot_actual_vs_predicted_impl(actual, predicted, actual_label, predicted_la
           f"p = {p_str}, n = {len(actual):,})")
 
 
-def plot_actual_vs_predicted(actual, predicted, actual_label, predicted_label, title, r, p_str, output_file):
+def plot_actual_vs_predicted(actual, predicted, actual_label, predicted_label, title, r, p_str, output_file,
+                             groups=None):
     """
     Scatter of a model-derived 'predicted' quantity (x-axis) vs. the
     corresponding 'actual' quantity (y-axis) (e.g. predicted/fitted TE_mean
@@ -448,11 +471,11 @@ def plot_actual_vs_predicted(actual, predicted, actual_label, predicted_label, t
     (Pearson correlation is symmetric).
     """
     _plot_actual_vs_predicted_impl(actual, predicted, actual_label, predicted_label, title, r, p_str,
-                                    output_file, stat_symbol='R', stat_name='Pearson R')
+                                    output_file, stat_symbol='R', stat_name='Pearson R', groups=groups)
 
 
 def plot_actual_vs_predicted_spearman(actual, predicted, actual_label, predicted_label, title, rho, p_str,
-                                       output_file):
+                                       output_file, groups=None):
     """
     Same as `plot_actual_vs_predicted`, but annotated with Spearman's rho
     (rank correlation) instead of Pearson's R. Intended as a parallel
@@ -460,7 +483,7 @@ def plot_actual_vs_predicted_spearman(actual, predicted, actual_label, predicted
     different `output_file` (e.g. with a `_spearman` suffix).
     """
     _plot_actual_vs_predicted_impl(actual, predicted, actual_label, predicted_label, title, rho, p_str,
-                                    output_file, stat_symbol='\u03c1', stat_name='Spearman rho')
+                                    output_file, stat_symbol='\u03c1', stat_name='Spearman rho', groups=groups)
 
 
 def _wrap_title(title, width=52):
@@ -539,6 +562,7 @@ _NAMED_GROUP_COLORS = {
     'PAR2': '#FFFF33',
     'X': '#E41A1C',
     'Y': '#4DAF4A',
+    'Z': '#E41A1C',
 }
 _FALLBACK_GROUP_COLORS = GROUP_COLORS
 
@@ -976,43 +1000,55 @@ def bootstrap_codon_spearman_rho(codon_freq_df, te, codons=SENSE_CODONS, n_boot=
                                   random_state)
 
 
-# X-axis codon label colors when `color_by_third_base=True`
-THIRD_BASE_AT_COLOR = 'red'    # codon ends in A or T
-THIRD_BASE_GC_COLOR = 'black'  # codon ends in G or C
+# Per-codon correlation bar plots: greyscale bars (dark = positive, light = negative) with a row of
+# colored squares under the bars marking each codon's third base (blue = A/T-ending, yellow = G/C-ending).
+THIRD_BASE_AT_COLOR = '#0019FC'  # codon ends in A or T
+THIRD_BASE_GC_COLOR = '#FFFF00'  # codon ends in G or C
+BAR_POSITIVE_GREY = '#4D4D4D'
+BAR_NEGATIVE_GREY = '#B3B3B3'
 
 
-def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_kind,
-                              color_by_third_base=False):
+def _draw_codon_corr_bars(df_sorted, value_col, yerr, title, ylabel, note, output_file, third_base_squares=True):
     """
-    Shared implementation for `plot_codon_pearson_r_barplot` and
-    `plot_codon_spearman_rho_barplot`: bar plot of each codon's correlation
-    (`value_col`) with TE, sorted in descending order, with bootstrap-SD
-    error bars. If `color_by_third_base`, the codon labels on the x axis are
-    red when the codon ends in A/T and black when it ends in G/C.
+    Bar plot of `df_sorted[value_col]` per codon (already sorted) with error bars `yerr`.
+    With `third_base_squares` (default): greyscale bars + a row of squares below them, blue for codons
+    ending in A/T and yellow for G/C (codon labels are black, under the squares); otherwise the earlier
+    blue (r >= 0) / orange (r < 0) bars with the labels directly under the axis.
     """
-    df_sorted = r_df.sort_values(value_col, ascending=False).reset_index(drop=True)
-
-    fig, ax = plt.subplots(figsize=(18, 6))
-    colors = ['#377EB8' if v >= 0 else '#FF7F00' for v in df_sorted[value_col]]
-    ax.bar(df_sorted['codon'], df_sorted[value_col], yerr=df_sorted['boot_sd'],
-           color=colors, alpha=0.8, capsize=2, error_kw=dict(elinewidth=0.8, capthick=0.8))
+    n = len(df_sorted)
+    x = np.arange(n)
+    values = df_sorted[value_col].to_numpy()
+    if third_base_squares:
+        fig, (ax, ax_sq) = plt.subplots(2, 1, figsize=(18, 6.3), sharex=True,
+                                        gridspec_kw=dict(height_ratios=[6, 0.25], hspace=0.04))
+        colors = [BAR_POSITIVE_GREY if v >= 0 else BAR_NEGATIVE_GREY for v in values]
+        alpha = 1.0
+    else:
+        fig, ax = plt.subplots(figsize=(18, 6))
+        ax_sq = ax
+        colors = ['#377EB8' if v >= 0 else '#FF7F00' for v in values]
+        alpha = 0.8
+    ax.bar(x, values, yerr=yerr, color=colors, alpha=alpha, capsize=2,
+           error_kw=dict(elinewidth=0.8, capthick=0.8))
     ax.axhline(0, color='black', linewidth=0.8)
-
-    ax.set_xlabel('Codon')
     ax.set_ylabel(ylabel)
     ax.set_title(title, fontweight='bold')
-    ax.set_xticks(range(len(df_sorted)))
-    ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
-    if color_by_third_base:
-        for tick, codon in zip(ax.get_xticklabels(), df_sorted['codon']):
-            tick.set_color(THIRD_BASE_AT_COLOR if codon[-1] in 'AT' else THIRD_BASE_GC_COLOR)
-        ax.legend(handles=[Line2D([], [], marker='s', linestyle='', color=THIRD_BASE_AT_COLOR,
-                                  label='codon label: ends in A/T'),
-                           Line2D([], [], marker='s', linestyle='', color=THIRD_BASE_GC_COLOR,
-                                  label='codon label: ends in G/C')],
+    ax.set_xlim(-0.7, n - 0.3)
+
+    if third_base_squares:
+        sq_colors = [THIRD_BASE_AT_COLOR if c[-1] in 'AT' else THIRD_BASE_GC_COLOR for c in df_sorted['codon']]
+        ax_sq.bar(x, 1, width=0.85, color=sq_colors, edgecolor='gray', linewidth=0.4)
+        ax_sq.set_ylim(0, 1)
+        ax_sq.set_yticks([])
+        for side in ('top', 'left', 'right', 'bottom'):
+            ax_sq.spines[side].set_visible(False)
+        ax.legend(handles=[Patch(facecolor=THIRD_BASE_AT_COLOR, edgecolor='gray', label='codon ends in A/T'),
+                           Patch(facecolor=THIRD_BASE_GC_COLOR, edgecolor='gray', label='codon ends in G/C')],
                   loc='upper center', fontsize=8, framealpha=0.9)
-    ax.annotate(f"n = {int(df_sorted['n'].iloc[0]):,}\nerror bars = {error_kind} ({len(df_sorted):,} codons)",
-                xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
+    ax_sq.set_xticks(x)
+    ax_sq.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7, color='black')
+    ax_sq.set_xlabel('Codon')
+    ax.annotate(note, xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
     plt.tight_layout()
     plt.savefig(output_file, dpi=150)
@@ -1020,7 +1056,21 @@ def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_
     print(f"  Saved: {output_file}")
 
 
-def plot_codon_pearson_r_barplot(r_df, title, output_file, color_by_third_base=False):
+def _plot_codon_corr_barplot(r_df, value_col, title, output_file, ylabel, error_kind,
+                              color_by_third_base=True):
+    """
+    Shared implementation for `plot_codon_pearson_r_barplot` and
+    `plot_codon_spearman_rho_barplot`: bar plot of each codon's correlation
+    (`value_col`) with TE, sorted in descending order, with bootstrap-SD
+    error bars. `color_by_third_base`: greyscale bars + blue (A/T) / yellow (G/C) squares per codon.
+    """
+    df_sorted = r_df.sort_values(value_col, ascending=False).reset_index(drop=True)
+    note = f"n = {int(df_sorted['n'].iloc[0]):,}\nerror bars = {error_kind} ({len(df_sorted):,} codons)"
+    _draw_codon_corr_bars(df_sorted, value_col, df_sorted['boot_sd'], title, ylabel, note, output_file,
+                          color_by_third_base)
+
+
+def plot_codon_pearson_r_barplot(r_df, title, output_file, color_by_third_base=True):
     """
     Bar plot of each codon's Pearson r with TE (from `bootstrap_codon_pearson_r`),
     sorted in descending order of r, with bootstrap-SD error bars.
@@ -1032,7 +1082,7 @@ def plot_codon_pearson_r_barplot(r_df, title, output_file, color_by_third_base=F
                               color_by_third_base)
 
 
-def plot_codon_spearman_rho_barplot(r_df, title, output_file, color_by_third_base=False):
+def plot_codon_spearman_rho_barplot(r_df, title, output_file, color_by_third_base=True):
     """
     Spearman-rho analog of `plot_codon_pearson_r_barplot`: bar plot of each
     codon's Spearman rho with TE (from `bootstrap_codon_spearman_rho`),
@@ -1152,36 +1202,20 @@ def ordinary_codon_spearman_rho(codon_freq_df, te, codons=SENSE_CODONS, confiden
     return _ordinary_codon_corr(codon_freq_df, te, _spearman_rho_columns, 'spearman_rho', codons, confidence)
 
 
-def _plot_codon_corr_barplot_ci(r_df, value_col, title, output_file, ylabel, confidence):
+def _plot_codon_corr_barplot_ci(r_df, value_col, title, output_file, ylabel, confidence, color_by_third_base=True):
     """
     Shared implementation for `plot_codon_pearson_r_barplot_ci` and
     `plot_codon_spearman_rho_barplot_ci`: bar plot of each codon's
     correlation (`value_col`) with TE, sorted in descending order, with
-    analytic Fisher-z confidence-interval error bars.
+    analytic Fisher-z confidence-interval error bars (same greyscale-bars + third-base squares style).
     """
     df_sorted = r_df.sort_values(value_col, ascending=False).reset_index(drop=True)
     lower_err = (df_sorted[value_col] - df_sorted['ci_lower']).to_numpy()
     upper_err = (df_sorted['ci_upper'] - df_sorted[value_col]).to_numpy()
-
-    fig, ax = plt.subplots(figsize=(18, 6))
-    colors = ['#377EB8' if v >= 0 else '#FF7F00' for v in df_sorted[value_col]]
-    ax.bar(df_sorted['codon'], df_sorted[value_col], yerr=[lower_err, upper_err],
-           color=colors, alpha=0.8, capsize=2, error_kw=dict(elinewidth=0.8, capthick=0.8))
-    ax.axhline(0, color='black', linewidth=0.8)
-
-    ax.set_xlabel('Codon')
-    ax.set_ylabel(ylabel)
-    ax.set_title(title, fontweight='bold')
-    ax.set_xticks(range(len(df_sorted)))
-    ax.set_xticklabels(df_sorted['codon'], rotation=90, fontsize=7)
-    ax.annotate(f"n = {int(df_sorted['n'].iloc[0]):,}\n"
-                f"error bars = {confidence:.0%} Fisher-z CI ({len(df_sorted):,} codons)",
-                xy=(0.99, 0.98), xycoords='axes fraction', va='top', ha='right', fontsize=9,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.9))
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=150)
-    plt.close()
-    print(f"  Saved: {output_file}")
+    note = (f"n = {int(df_sorted['n'].iloc[0]):,}\n"
+            f"error bars = {confidence:.0%} Fisher-z CI ({len(df_sorted):,} codons)")
+    _draw_codon_corr_bars(df_sorted, value_col, [lower_err, upper_err], title, ylabel, note, output_file,
+                          color_by_third_base)
 
 
 def plot_codon_pearson_r_barplot_ci(r_df, title, output_file, confidence=0.95):

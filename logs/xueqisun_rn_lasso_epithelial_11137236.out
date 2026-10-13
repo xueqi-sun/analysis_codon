@@ -1,0 +1,151 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/human_co_mega_test_lasso_ribonn.py:292: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, epithelial) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/codon_frequencies_ribonn_epithelial_lasso.csv
+
+[2] Loading ribonn TE data (epithelial)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 7,997 rows, 7,997 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  7,997 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/epithelial/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (7,997 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 11,247 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 16 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 7,981
+    Saved unmatched-key audit (11,263 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/join_audit_codon_vs_te_train_ribonn_epithelial_lasso.csv
+  7,981 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies (LASSO) on autosomal genes...
+  Training on 7,727 autosomal genes, 61 codon predictors.
+  R^2 = 0.2129   Adjusted R^2 = 0.2071   n = 7727
+  Lasso alpha (10-fold CV) = 0.00127; 57 of 61 codons have non-zero coefficients.
+  Saved intercept + 61 lasso codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_model_coefficients_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_fit_train_ribonn_epithelial_lasso.png  (Pearson R = 0.4616, Pearson R² = 0.2131, p = 2.387e-404, n = 7,727)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_fit_train_spearman_ribonn_epithelial_lasso.png  (Spearman rho = 0.4032, Spearman rho² = 0.1626, p = 5.746e-300, n = 7,727)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Lasso regression diagnostics (autosomal training genes, Human epithelial (ribonn), lasso) ---
+  Normality of residuals: skew = 0.725, excess kurtosis = 1.720, D'Agostino K^2 p = 5.51e-186
+  Homoscedasticity (Breusch-Pagan): LM stat = 361.077, p = 3.59e-44
+  Linearity (RESET-style on fitted values): F = 96.975, p = 2.54e-42
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_diagnostics_te_histogram_ribonn_epithelial_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_diagnostics_residual_histogram_ribonn_epithelial_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_diagnostics_residual_qq_ribonn_epithelial_lasso.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_epithelial_lasso.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_regression_diagnostics_stats_ribonn_epithelial_lasso.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (7,997 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 11,247 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 16 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 7,981
+    Saved unmatched-key audit (11,263 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/join_audit_codon_vs_te_all_genes_ribonn_epithelial_lasso.csv
+  All genes with TE (n=7,981): Pearson r = 0.4599 (p = 0), Spearman rho = 0.4028 (p = 4.7e-309)
+  Autosomal genes only (n=7,727, training set): Pearson r = 0.4616 (p = 0), Spearman rho = 0.4032 (p = 5.75e-300)
+  X-linked genes only (n=254, held out): Pearson r = 0.4258 (p = 1.31e-12), Spearman rho = 0.3756 (p = 6.25e-10)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_te_correlation_stats_ribonn_epithelial_lasso.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_te_correlation_stats_spearman_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_all_genes_ribonn_epithelial_lasso.png  (Pearson R = 0.4599, Pearson R² = 0.2115, p = 3.038e-414, n = 7,981)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_all_genes_spearman_ribonn_epithelial_lasso.png  (Spearman rho = 0.4028, Spearman rho² = 0.1622, p = 4.698e-309, n = 7,981)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_autosomal_ribonn_epithelial_lasso.png  (Pearson R = 0.4616, Pearson R² = 0.2131, p = 2.387e-404, n = 7,727)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_autosomal_spearman_ribonn_epithelial_lasso.png  (Spearman rho = 0.4032, Spearman rho² = 0.1626, p = 5.746e-300, n = 7,727)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_X_linked_ribonn_epithelial_lasso.png  (Pearson R = 0.4258, Pearson R² = 0.1813, p = 1.31e-12, n = 254)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_vs_te_X_linked_spearman_ribonn_epithelial_lasso.png  (Spearman rho = 0.3756, Spearman rho² = 0.1411, p = 6.252e-10, n = 254)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (7,997 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 11,247 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 16 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (11,263 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/join_audit_codon_vs_te_output_table_ribonn_epithelial_lasso.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_all_genes_ribonn_epithelial_lasso.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_autosome_vs_X_ribonn_epithelial_lasso.png  (Mann-Whitney U p = 5.46e-09, mean autosome = 0.636, mean X chromosome = 0.696)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human epithelial (ribonn), lasso)):
+    Autosome (n=18,351) vs X (n=834): p = 4.97e-09
+    Autosome (n=18,351) vs Y (n=43): p = 0.0722
+    X (n=834) vs Y (n=43): p = 0.832
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_autosome_vs_X_vs_Y_stats_ribonn_epithelial_lasso.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_codon_pearson_r_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_codon_pearson_r_barplot_ribonn_epithelial_lasso.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_codon_spearman_rho_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_codon_pearson_r_barplot_spearman_ribonn_epithelial_lasso.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.000839
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.00406
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.627
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.168
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.574
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.158
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.759
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.831
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.606
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.402
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.626
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.82
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.667
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.79
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.407
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.261
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_XCI_categories_full_stats_Gylemo_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.00406
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.627
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.759
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_epithelial_lasso.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 1.98e-06
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_XCI_categories_full_Neha_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 6.64e-06
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.537
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.168
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.574
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.158
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.309
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.998
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.627
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.392
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.467
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.851
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.23
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.79
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.407
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.261
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_XCI_categories_full_stats_Neha_ribonn_epithelial_lasso.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/epithelial/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_epithelial_lasso.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human epithelial (ribonn), lasso)):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 6.64e-06
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.537
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.309
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/epithelial/co_mega_XCI_categories_reduced_stats_Neha_ribonn_epithelial_lasso.csv
+
+=== Done ===

@@ -42,7 +42,7 @@ from scipy import stats
 
 from co_mega import SENSE_CODONS, compute_co_mega
 from co_mega_common import (
-    precise_pvalue_str, compute_codon_frequencies, fit_co_mega_te_model,
+    precise_pvalue_str, chromosome_groups, compute_codon_frequencies, fit_co_mega_te_model,
     save_coefficient_table, plot_actual_vs_predicted, plot_actual_vs_predicted_spearman,
     plot_co_mega_boxplot, bootstrap_codon_pearson_r, bootstrap_codon_spearman_rho,
     plot_codon_pearson_r_barplot, plot_codon_spearman_rho_barplot, parse_cds_fasta,
@@ -233,10 +233,10 @@ def main():
 
     plot_actual_vs_predicted(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', r_all, p_all_str,
-                              fig("co_mega_vs_te_all_genes"))
+                              fig("co_mega_vs_te_all_genes"), groups=chromosome_groups(with_te))
     plot_actual_vs_predicted_spearman(with_te['TE_mean'], with_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                                        f'Actual TE vs. CO_Mega: All genes ({TISSUE_LABEL})', rho_all, p_rho_all_str,
-                                       fig("co_mega_vs_te_all_genes_spearman"))
+                                       fig("co_mega_vs_te_all_genes_spearman"), groups=chromosome_groups(with_te))
     plot_actual_vs_predicted(auto_te['TE_mean'], auto_te['CO_Mega'], 'Actual TE_mean', 'CO_Mega',
                               f'Actual TE vs. CO_Mega: Autosomal genes ({TISSUE_LABEL})', r_auto, p_auto_str,
                               fig("co_mega_vs_te_autosomal"))

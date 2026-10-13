@@ -1,0 +1,152 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/human_co_mega_analysis_ribonn.py:191: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, LCL) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/codon_frequencies_ribonn_LCL.csv
+
+[2] Loading ribonn TE data (LCL)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 10,136 rows, 10,136 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  10,136 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/LCL/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,136 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,112 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 10,116
+    Saved unmatched-key audit (9,132 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/join_audit_codon_vs_te_train_ribonn_LCL.csv
+  10,116 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies on autosomal genes...
+  Training on 9,776 autosomal genes, 61 codon predictors.
+  R^2 = 0.3359   Adjusted R^2 = 0.3317   n = 9776
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_model_coefficients_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_fit_train_ribonn_LCL.png  (Pearson R = 0.5796, Pearson R² = 0.3359, p = 2.213e-871, n = 9,776)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_fit_train_spearman_ribonn_LCL.png  (Spearman rho = 0.5521, Spearman rho² = 0.3048, p = 2.885e-774, n = 9,776)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (autosomal training genes, Human LCL (ribonn)) ---
+  Normality of TE (actual, log2 scale, n=9,776): skew = 0.453, excess kurtosis = 0.480, D'Agostino K^2 p = 1.1e-80, Jarque-Bera p = 8.54e-94
+  Normality of residuals: skew = 0.291, excess kurtosis = 0.760, D'Agostino K^2 p = 2.13e-57, Jarque-Bera p = 8.42e-82
+  Homoscedasticity (Breusch-Pagan): LM stat = 202.677, p = 4.2e-17
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 88.651, p = 7.02e-39
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_diagnostics_te_histogram_ribonn_LCL.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_diagnostics_residual_histogram_ribonn_LCL.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_diagnostics_residual_qq_ribonn_LCL.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_LCL.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_regression_diagnostics_stats_ribonn_LCL.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,136 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,112 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 10,116
+    Saved unmatched-key audit (9,132 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/join_audit_codon_vs_te_all_genes_ribonn_LCL.csv
+  All genes with TE (n=10,116): Pearson r = 0.5804 (p = 0), Spearman rho = 0.5538 (p = 0)
+  Autosomal genes only (n=9,776, training set): Pearson r = 0.5796 (p = 0), Spearman rho = 0.5521 (p = 0)
+  X-linked genes only (n=340, held out): Pearson r = 0.5868 (p = 7.59e-33), Spearman rho = 0.5797 (p = 6.48e-32)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_te_correlation_stats_ribonn_LCL.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_te_correlation_stats_spearman_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_all_genes_ribonn_LCL.png  (Pearson R = 0.5804, Pearson R² = 0.3369, p = 1.05e-904, n = 10,116)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_all_genes_spearman_ribonn_LCL.png  (Spearman rho = 0.5538, Spearman rho² = 0.3067, p = 3.972e-807, n = 10,116)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_autosomal_ribonn_LCL.png  (Pearson R = 0.5796, Pearson R² = 0.3359, p = 2.213e-871, n = 9,776)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_autosomal_spearman_ribonn_LCL.png  (Spearman rho = 0.5521, Spearman rho² = 0.3048, p = 2.885e-774, n = 9,776)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_X_linked_ribonn_LCL.png  (Pearson R = 0.5868, Pearson R² = 0.3444, p = 7.59e-33, n = 340)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_vs_te_X_linked_spearman_ribonn_LCL.png  (Spearman rho = 0.5797, Spearman rho² = 0.3361, p = 6.479e-32, n = 340)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (10,136 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,112 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 20 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (9,132 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/join_audit_codon_vs_te_output_table_ribonn_LCL.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_all_genes_ribonn_LCL.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_autosome_vs_X_ribonn_LCL.png  (Mann-Whitney U p = 2.16e-11, mean autosome = 0.186, mean X chromosome = 0.324)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human LCL (ribonn))):
+    Autosome (n=18,351) vs X (n=834): p = 1.97e-11
+    Autosome (n=18,351) vs Y (n=43): p = 0.143
+    X (n=834) vs Y (n=43): p = 0.825
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_autosome_vs_X_vs_Y_stats_ribonn_LCL.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_codon_pearson_r_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_codon_pearson_r_barplot_ribonn_LCL.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_codon_spearman_rho_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_codon_pearson_r_barplot_spearman_ribonn_LCL.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human LCL (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.000348
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human LCL (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.00344
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.678
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.133
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.122
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.971
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.78
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.831
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.877
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.69
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.577
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.671
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 0.5
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.89
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.706
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.732
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_XCI_categories_full_stats_Gylemo_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human LCL (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.00344
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.678
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.78
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_LCL.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human LCL (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 1.28e-09
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_XCI_categories_full_Neha_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human LCL (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 8.38e-09
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.374
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.133
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.122
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.971
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.277
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.699
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.947
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.63
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.601
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.469
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.822
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.89
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.706
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.732
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_XCI_categories_full_stats_Neha_ribonn_LCL.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/LCL/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_LCL.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human LCL (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 8.38e-09
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.374
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.277
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/LCL/co_mega_XCI_categories_reduced_stats_Neha_ribonn_LCL.csv
+
+=== Done ===

@@ -1,0 +1,32 @@
+=== OLS vs lasso CO_Mega model, ribonn TE, LCL ===
+
+[1] Coefficients
+  lasso alpha (10-fold CV, standardized predictors) = 0.000908
+  lasso keeps 59 of 61 codons; sets 2 to exactly 0: TAT, ATT
+  of those 2, 0 are nominally significant (p < 0.05) in the OLS model; OLS has 18 nominally significant codons overall, 18 of them kept by the lasso
+  OLS vs lasso coefficients: Pearson r = 0.9998, Spearman rho = 0.9993; slope of lasso on OLS among kept codons = 0.988 (shrinkage)
+  coefficient mean / SD across the 61 codons: OLS -43.878 / 6.574, lasso -1.324 / 6.495
+  NOTE: the 61 sense-codon frequencies of a gene sum to ~1 (see [2]), so together with the intercept the OLS
+  coefficients are only identified up to a common shift (add c to every coefficient, subtract c from the
+  intercept): the huge OLS intercept / mean coefficient are that arbitrary shift, not an effect. Only the
+  differences between codons (SD, correlations, slope above, all shift-invariant) are meaningful; the lasso
+  penalty picks the sparse solution, which is why its intercept and mean coefficient stay small.
+  intercept: OLS 43.6785, lasso 1.1262
+
+[2] Fit on 9,776 autosomal training genes
+  sum of the 61 sense-codon frequencies per gene: mean 0.999993, SD 0.000274, min 0.9738 (99.9% of genes have sum = 1)
+model  in_sample_R2  cv_R2_pooled  cv_R2_fold_mean  cv_R2_fold_sd  cv_pearson_r  cv_spearman_rho  cv_rmse
+  OLS        0.3359        0.3238           0.3234         0.0215        0.5691           0.5433   0.8379
+lasso        0.3356        0.3239           0.3235         0.0206        0.5692           0.5431   0.8378
+  per-fold CV R^2, OLS minus lasso: mean -0.00019 (sd 0.00161; paired t-test p = 0.723; lasso better in 5 of 10 folds)
+
+[3] CO_Mega vs TE by gene set (trained on autosomes only)
+            gene_set     n  pearson_r_ols  spearman_rho_ols  R2_ols  pearson_r_lasso  spearman_rho_lasso  R2_lasso
+Autosomal (training)  9776         0.5796            0.5521  0.3359           0.5794              0.5518    0.3356
+ X-linked (held out)   340         0.5868            0.5797  0.3435           0.5869              0.5790    0.3439
+           All genes 10116         0.5804            0.5538  0.3369           0.5802              0.5535    0.3366
+
+[4] Per-gene agreement of the two CO_Mega scores
+  19,228 genes: Pearson r = 0.99973, Spearman rho = 0.99977; SD of OLS CO_Mega = 0.6042, lasso = 0.5994
+
+=== Done ===

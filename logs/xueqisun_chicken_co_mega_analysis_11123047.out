@@ -1,0 +1,81 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Chicken CO_Mega model (chicken liver) ===
+
+[1] Parsing chicken CDS FASTA into a CSV table...
+  Parsed 7,262 CDS records from /lab/solexa_page/xueqi/analysis_codon/data/chicken_CDS_sequence.txt
+  Saved to /lab/solexa_page/xueqi/analysis_codon/data/chicken_CDS_sequence.csv
+
+[2] Computing codon frequencies from CDS sequences...
+  Loaded 7,262 genes from /lab/solexa_page/xueqi/analysis_codon/data/chicken_CDS_sequence.csv
+  Dropped 0 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 7,262 genes remain.
+  6,882 autosomal (chr 1-39) genes, 380 Z-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/codon_frequencies_chicken_liver.csv
+
+[3] Loading canonical chicken liver TE data (EnsemblBioMart IDs already attached)...
+  7,678 chicken genes with both TE_mean and a mapped EnsemblBioMart ID in /lab/solexa_page/xueqi/analysis_riboseq/tables/chicken_liver/translational_efficiency_data_with_ids.csv (3,722 rows there had no mapped ID -- no clean 1:1 crosswalk mapping -- and are excluded).
+  [join audit] chicken codon frequencies (training genes) (7,262 rows, key='te_gene_id') x chicken TE (with EnsemblBioMart IDs) (7,678 rows, key='te_gene_id'):
+    duplicated keys: 0 in chicken codon frequencies (training genes), 0 in chicken TE (with EnsemblBioMart IDs)
+    unmatched: 3,622 chicken codon frequencies (training genes) keys with no match in chicken TE (with EnsemblBioMart IDs); 4,038 chicken TE (with EnsemblBioMart IDs) keys with no match in chicken codon frequencies (training genes)
+    rows after merge ('inner'): 3,640
+    Saved unmatched-key audit (7,660 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/join_audit_codon_vs_te_train_chicken_liver.csv
+  3,640 genes with both codon frequencies and TE_mean.
+
+[4] Fitting TE_mean ~ codon frequencies on autosomal genes...
+  Training on 3,436 autosomal genes, 61 codon predictors.
+  R^2 = 0.3916   Adjusted R^2 = 0.3808   n = 3436
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_model_coefficients_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_fit_train_chicken_liver.png  (Pearson R = 0.6258, Pearson R² = 0.3916, p = 6.218e-373, n = 3,436)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_fit_train_spearman_chicken_liver.png  (Spearman rho = 0.6338, Spearman rho² = 0.4017, p = 1.944e-385, n = 3,436)
+
+[4b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (autosomal training genes, Chicken liver) ---
+  Normality of TE (actual, log2 scale, n=3,436): skew = -0.692, excess kurtosis = 0.532, D'Agostino K^2 p = 7.86e-56, Jarque-Bera p = 4.45e-69
+  Normality of residuals: skew = -0.759, excess kurtosis = 1.509, D'Agostino K^2 p = 1.44e-83, Jarque-Bera p = 3.84e-143
+  Homoscedasticity (Breusch-Pagan): LM stat = 171.051, p = 2.24e-12
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 8.598, p = 0.000189
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_diagnostics_te_histogram_chicken_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_diagnostics_residual_histogram_chicken_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_diagnostics_residual_qq_chicken_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_regression_diagnostics_residual_vs_fitted_chicken_liver.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_regression_diagnostics_stats_chicken_liver.csv
+
+[5] Computing CO_Mega for all genes (autosomes + Z) and comparing to TE...
+  [join audit] chicken codon frequencies (all genes) (7,262 rows, key='te_gene_id') x chicken TE (with EnsemblBioMart IDs) (7,678 rows, key='te_gene_id'):
+    duplicated keys: 0 in chicken codon frequencies (all genes), 0 in chicken TE (with EnsemblBioMart IDs)
+    unmatched: 3,622 chicken codon frequencies (all genes) keys with no match in chicken TE (with EnsemblBioMart IDs); 4,038 chicken TE (with EnsemblBioMart IDs) keys with no match in chicken codon frequencies (all genes)
+    rows after merge ('inner'): 3,640
+    Saved unmatched-key audit (7,660 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/join_audit_codon_vs_te_all_genes_chicken_liver.csv
+  All genes with TE (n=3,640): Pearson r = 0.6290 (p = 0), Spearman rho = 0.6364 (p = 0)
+  Autosomal genes only (n=3,436, training set): Pearson r = 0.6258 (p = 0), Spearman rho = 0.6338 (p = 0)
+  Z-linked genes only (n=204, held out): Pearson r = 0.6132 (p = 1.86e-22), Spearman rho = 0.6048 (p = 9.81e-22)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_te_correlation_stats_chicken_liver.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_te_correlation_stats_spearman_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_all_genes_chicken_liver.png  (Pearson R = 0.6290, Pearson R² = 0.3957, p = 2.83e-400, n = 3,640)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_all_genes_spearman_chicken_liver.png  (Spearman rho = 0.6364, Spearman rho² = 0.4050, p = 1.692e-412, n = 3,640)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_autosomal_chicken_liver.png  (Pearson R = 0.6258, Pearson R² = 0.3916, p = 6.218e-373, n = 3,436)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_autosomal_spearman_chicken_liver.png  (Spearman rho = 0.6338, Spearman rho² = 0.4017, p = 1.944e-385, n = 3,436)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_Z_linked_chicken_liver.png  (Pearson R = 0.6132, Pearson R² = 0.3760, p = 1.86e-22, n = 204)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_vs_te_Z_linked_spearman_chicken_liver.png  (Spearman rho = 0.6048, Spearman rho² = 0.3658, p = 9.812e-22, n = 204)
+  [join audit] chicken codon frequencies (all genes, for output table) (7,262 rows, key='te_gene_id') x chicken TE (with EnsemblBioMart IDs) (7,678 rows, key='te_gene_id'):
+    duplicated keys: 0 in chicken codon frequencies (all genes, for output table), 0 in chicken TE (with EnsemblBioMart IDs)
+    unmatched: 3,622 chicken codon frequencies (all genes, for output table) keys with no match in chicken TE (with EnsemblBioMart IDs); 4,038 chicken TE (with EnsemblBioMart IDs) keys with no match in chicken codon frequencies (all genes, for output table)
+    rows after merge ('left'): 7,262
+    Saved unmatched-key audit (7,660 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/join_audit_codon_vs_te_output_table_chicken_liver.csv
+  Saved CO_Mega for all 7,262 genes to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_all_genes_chicken_liver.csv
+
+[6] Boxplot: CO_Mega, autosomal vs Z-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_boxplot_autosome_vs_Z_chicken_liver.png  (Mann-Whitney U p = 1.54e-22, mean autosome = -1.405, mean Z chromosome = -0.967)
+
+[7] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_codon_pearson_r_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_codon_pearson_r_barplot_chicken_liver.png
+
+[7b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/chicken/co_mega_codon_spearman_rho_chicken_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/chicken/co_mega_codon_pearson_r_barplot_spearman_chicken_liver.png
+
+=== Done ===

@@ -1,0 +1,143 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+
+[1] Loading Tim's codon frequencies and converting gene IDs...
+  Loaded 20,611 genes from /lab/solexa_page/xueqi/analysis_codon/data/LightStimPalAnnotations20211019_CDS_CodonFrequencies.csv (20,611 unique old IDs)
+  252 of Tim's genes dropped: old ID maps to >1 distinct new gene ID.
+  202 of Tim's genes dropped: old ID not found in the mapping table.
+  67 of Tim's genes dropped: >1 of Tim's rows map to the same new gene ID (32 gene IDs affected).
+  20,090 of Tim's 20,611 genes successfully converted to a unique new gene ID.
+
+=== Tim's mouse cortical culture: codon frequency -> TE reconstruction ===
+
+[2] Loading Tim's mouse cortical culture TE data (log10.TR) from /lab/solexa_page/xueqi/analysis_codon/data/Tim_data_TE_mouse_corticalculture.csv...
+  Loaded 3,267 genes with a TE value from /lab/solexa_page/xueqi/analysis_codon/data/Tim_data_TE_mouse_corticalculture.csv
+
+[3] Intersecting codon frequencies with TE data...
+  3,211 genes with both codon frequencies and TE.
+
+[4] Fitting TE ~ codon frequencies (OLS) on all intersected genes...
+  R^2 = 0.2170   Adjusted R^2 = 0.2018   n = 3211
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_model_coefficients_Tim_mouse_corticalculture.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_fit_train_Tim_mouse_corticalculture.png  (Pearson R = 0.4658, Pearson R² = 0.2170, p = 1.154e-172, n = 3,211)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_fit_train_Tim_mouse_corticalculture_spearman.png  (Spearman rho = 0.4812, Spearman rho² = 0.2316, p = 8.297e-186, n = 3,211)
+
+[4b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (Tim's mouse cortical culture) ---
+  Normality of TE (actual, log2 scale, n=3,211): skew = 0.300, excess kurtosis = 1.471, D'Agostino K^2 p = 9.43e-34, Jarque-Bera p = 4.99e-74
+  Normality of residuals: skew = -0.029, excess kurtosis = 1.520, D'Agostino K^2 p = 9.94e-25, Jarque-Bera p = 6.14e-68
+  Homoscedasticity (Breusch-Pagan): LM stat = 151.695, p = 1.1e-09
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 15.190, p = 2.72e-07
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_te_histogram_Tim_mouse_corticalculture.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_histogram_Tim_mouse_corticalculture.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_qq_Tim_mouse_corticalculture.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_vs_fitted_Tim_mouse_corticalculture.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_regression_diagnostics_stats_Tim_mouse_corticalculture.csv
+
+[5a] Per-codon Pearson r with TE (bootstrap SD)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_pearson_r_Tim_mouse_corticalculture_bootstrap.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_corticalculture_bootstrap.png
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_spearman_rho_Tim_mouse_corticalculture_bootstrap.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_corticalculture_bootstrap_spearman.png
+
+[5b] Per-codon Pearson r with TE (ordinary, analytic Fisher-z CI)...
+  Saved per-codon Pearson r (+ 95% Fisher-z CI) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_pearson_r_Tim_mouse_corticalculture_ordinary.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_corticalculture_ordinary.png
+  Saved per-codon Spearman rho (+ 95% Fisher-z CI) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_spearman_rho_Tim_mouse_corticalculture_ordinary.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_corticalculture_ordinary_spearman.png
+
+[6] Comparing Tim's mouse cortical culture's per-codon Pearson r with other species/tissues...
+
+  --- bootstrap ---
+  Tim's mouse cortical culture vs. Human liver (n=61 codons): Pearson R = -0.8234 (p = 3.77e-16), Spearman rho = -0.8146 (p = 1.39e-15)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_human_liver_bootstrap.png
+  Tim's mouse cortical culture vs. Chicken liver (n=61 codons): Pearson R = -0.8158 (p = 1.17e-15), Spearman rho = -0.8159 (p = 1.15e-15)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_chicken_liver_bootstrap.png
+  Tim's mouse cortical culture vs. Mouse liver (n=61 codons): Pearson R = 0.0910 (p = 0.486), Spearman rho = 0.0696 (p = 0.594)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_mouse_liver_bootstrap.png
+  Saved comparison summary (Pearson/Spearman R, p) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/codon_pearson_r_comparison_summary_Tim_mouse_corticalculture_bootstrap.csv
+
+  --- ordinary ---
+  Tim's mouse cortical culture vs. Human liver (n=61 codons): Pearson R = -0.8234 (p = 3.77e-16), Spearman rho = -0.8146 (p = 1.39e-15)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_human_liver_ordinary.png
+  Tim's mouse cortical culture vs. Chicken liver (n=61 codons): Pearson R = -0.8158 (p = 1.17e-15), Spearman rho = -0.8159 (p = 1.15e-15)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_chicken_liver_ordinary.png
+  Tim's mouse cortical culture vs. Mouse liver (n=61 codons): Pearson R = 0.0910 (p = 0.486), Spearman rho = 0.0696 (p = 0.594)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_corticalculture_vs_mouse_liver_ordinary.png
+  Saved comparison summary (Pearson/Spearman R, p) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/codon_pearson_r_comparison_summary_Tim_mouse_corticalculture_ordinary.csv
+
+=== Tim's mouse liver: codon frequency -> TE reconstruction ===
+
+[2] Loading Tim's mouse liver TE data (log10.TR) from /lab/solexa_page/xueqi/analysis_codon/data/Tim_data_TE_mouse_liver.csv...
+  Loaded 6,268 genes with a TE value from /lab/solexa_page/xueqi/analysis_codon/data/Tim_data_TE_mouse_liver.csv
+
+[3] Intersecting codon frequencies with TE data...
+  6,174 genes with both codon frequencies and TE.
+
+[4] Fitting TE ~ codon frequencies (OLS) on all intersected genes...
+  R^2 = 0.2286   Adjusted R^2 = 0.2210   n = 6174
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_model_coefficients_Tim_mouse_liver.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_fit_train_Tim_mouse_liver.png  (Pearson R = 0.4782, Pearson R² = 0.2286, p = 2.442e-350, n = 6,174)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_fit_train_Tim_mouse_liver_spearman.png  (Spearman rho = 0.5120, Spearman rho² = 0.2621, p = 8.329e-410, n = 6,174)
+
+[4b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (Tim's mouse liver) ---
+  Normality of TE (actual, log2 scale, n=6,174): skew = -0.440, excess kurtosis = 0.833, D'Agostino K^2 p = 1.03e-60, Jarque-Bera p = 9.58e-83
+  Normality of residuals: skew = -0.728, excess kurtosis = 1.428, D'Agostino K^2 p = 6.15e-139, Jarque-Bera p = 6.48e-233
+  Homoscedasticity (Breusch-Pagan): LM stat = 303.387, p = 7.39e-34
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 70.897, p = 3.64e-31
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_te_histogram_Tim_mouse_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_histogram_Tim_mouse_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_qq_Tim_mouse_liver.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_regression_diagnostics_residual_vs_fitted_Tim_mouse_liver.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_regression_diagnostics_stats_Tim_mouse_liver.csv
+
+[5a] Per-codon Pearson r with TE (bootstrap SD)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_pearson_r_Tim_mouse_liver_bootstrap.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_liver_bootstrap.png
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_spearman_rho_Tim_mouse_liver_bootstrap.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_liver_bootstrap_spearman.png
+
+[5b] Per-codon Pearson r with TE (ordinary, analytic Fisher-z CI)...
+  Saved per-codon Pearson r (+ 95% Fisher-z CI) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_pearson_r_Tim_mouse_liver_ordinary.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_liver_ordinary.png
+  Saved per-codon Spearman rho (+ 95% Fisher-z CI) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/co_mega_codon_spearman_rho_Tim_mouse_liver_ordinary.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/co_mega_codon_pearson_r_barplot_Tim_mouse_liver_ordinary_spearman.png
+
+[6] Comparing Tim's mouse liver's per-codon Pearson r with other species/tissues...
+
+  --- bootstrap ---
+  Tim's mouse liver vs. Human liver (n=61 codons): Pearson R = -0.6561 (p = 9.46e-09), Spearman rho = -0.6375 (p = 3.3e-08)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_human_liver_bootstrap.png
+  Tim's mouse liver vs. Chicken liver (n=61 codons): Pearson R = -0.6514 (p = 1.31e-08), Spearman rho = -0.6158 (p = 1.28e-07)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_chicken_liver_bootstrap.png
+  Tim's mouse liver vs. Mouse liver (n=61 codons): Pearson R = 0.5061 (p = 3.16e-05), Spearman rho = 0.4478 (p = 0.000296)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_mouse_liver_bootstrap.png
+  Saved comparison summary (Pearson/Spearman R, p) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/codon_pearson_r_comparison_summary_Tim_mouse_liver_bootstrap.csv
+
+  --- ordinary ---
+  Tim's mouse liver vs. Human liver (n=61 codons): Pearson R = -0.6561 (p = 9.46e-09), Spearman rho = -0.6375 (p = 3.3e-08)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_human_liver_ordinary.png
+  Tim's mouse liver vs. Chicken liver (n=61 codons): Pearson R = -0.6514 (p = 1.31e-08), Spearman rho = -0.6158 (p = 1.28e-07)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_chicken_liver_ordinary.png
+  Tim's mouse liver vs. Mouse liver (n=61 codons): Pearson R = 0.5061 (p = 3.16e-05), Spearman rho = 0.4478 (p = 0.000296)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/mouse/testing_Tim/codon_pearson_r_Tim_mouse_liver_vs_mouse_liver_ordinary.png
+  Saved comparison summary (Pearson/Spearman R, p) to /lab/solexa_page/xueqi/analysis_codon/tables/mouse/testing_Tim/codon_pearson_r_comparison_summary_Tim_mouse_liver_ordinary.csv
+
+=== Done ===
