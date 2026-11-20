@@ -1,0 +1,152 @@
+/lab/solexa_page/xueqi/analysis_codon/scripts/ribonn/human_co_mega_analysis_ribonn.py:193: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  te_df = pd.concat([te_df, te_df_y], ignore_index=True)
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+/lab/solexa_page/xueqi/analysis_codon/scripts/co_mega_common.py:1053: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+=== Human CO_Mega model (ribonn TE, HCC_tumor) ===
+
+[1] Computing codon frequencies from CDS sequences...
+  Loaded 19,229 genes from /lab/solexa_page/xueqi/general/sequence_CDS/human/tables/human_CDS_sequences_MANE_Select_ensembl.csv
+  19,229 of 19,229 genes have an Ensembl gene ID (native to the MANE GTF).
+  Dropped 1 genes with missing/unusable CDS sequences (not a multiple of 3, or too short); 19,228 genes remain.
+  18,351 autosomal (chr 1-22) genes, 834 X-linked genes, 43 Y-linked genes.
+  Saved codon frequencies to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/codon_frequencies_ribonn_HCC_tumor.csv
+
+[2] Loading ribonn TE data (HCC_tumor)...
+  [key uniqueness] all_human_genes_merged_data.csv (TE_FILE): 9,494 rows, 9,494 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+  9,494 genes with TE_mean (0 Y-linked, from /lab/solexa_page/xueqi/analysis_riboseq/tables/ribonn/HCC_tumor/chromosome_te_analysis_Y.csv).
+  [join audit] human codon frequencies (CDS, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,494 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (CDS, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,751 human codon frequencies (CDS, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 17 human TE (Ensembl gene ID) keys with no match in human codon frequencies (CDS, Ensembl gene ID)
+    rows after merge ('inner'): 9,477
+    Saved unmatched-key audit (9,768 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/join_audit_codon_vs_te_train_ribonn_HCC_tumor.csv
+  9,477 genes with both codon frequencies and TE_mean.
+
+[3] Fitting TE_mean ~ codon frequencies on autosomal genes...
+  Training on 9,160 autosomal genes, 61 codon predictors.
+  R^2 = 0.2321   Adjusted R^2 = 0.2270   n = 9160
+  Saved intercept + 61 codon coefficients to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_model_coefficients_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_fit_train_ribonn_HCC_tumor.png  (Pearson R = 0.4818, Pearson R² = 0.2321, p = 8.824e-528, n = 9,160)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_fit_train_spearman_ribonn_HCC_tumor.png  (Spearman rho = 0.4952, Spearman rho² = 0.2452, p = 6.996e-562, n = 9,160)
+
+[3b] Regression diagnostics (linearity, homoscedasticity, normality)...
+  --- Regression diagnostics (autosomal training genes, Human HCC tumor (ribonn)) ---
+  Normality of TE (actual, log2 scale, n=9,160): skew = -0.505, excess kurtosis = 0.179, D'Agostino K^2 p = 7.99e-79, Jarque-Bera p = 4.53e-88
+  Normality of residuals: skew = -0.502, excess kurtosis = 0.560, D'Agostino K^2 p = 5.24e-92, Jarque-Bera p = 2.42e-110
+  Homoscedasticity (Breusch-Pagan): LM stat = 278.135, p = 1.77e-29
+  Linearity (Ramsey RESET, power=3 on fitted values): F = 28.618, p = 4.08e-13
+  (in each test, p < 0.05 => reject the null of normality / homoscedasticity / linearity)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_diagnostics_te_histogram_ribonn_HCC_tumor.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_diagnostics_residual_histogram_ribonn_HCC_tumor.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_diagnostics_residual_qq_ribonn_HCC_tumor.png
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_regression_diagnostics_residual_vs_fitted_ribonn_HCC_tumor.png
+  Saved diagnostic statistics to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_regression_diagnostics_stats_ribonn_HCC_tumor.csv
+
+[4] Computing CO_Mega for all genes (autosomes + X + Y) and comparing to TE...
+  [join audit] human codon frequencies (all genes, Ensembl gene ID) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,494 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, Ensembl gene ID), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,751 human codon frequencies (all genes, Ensembl gene ID) keys with no match in human TE (Ensembl gene ID); 17 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, Ensembl gene ID)
+    rows after merge ('inner'): 9,477
+    Saved unmatched-key audit (9,768 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/join_audit_codon_vs_te_all_genes_ribonn_HCC_tumor.csv
+  All genes with TE (n=9,477): Pearson r = 0.4836 (p = 0), Spearman rho = 0.4967 (p = 0)
+  Autosomal genes only (n=9,160, training set): Pearson r = 0.4818 (p = 0), Spearman rho = 0.4952 (p = 0)
+  X-linked genes only (n=317, held out): Pearson r = 0.4847 (p = 4.41e-20), Spearman rho = 0.4764 (p = 2.3e-19)
+  Saved CO_Mega vs. TE correlation stats (n, Pearson r, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_te_correlation_stats_ribonn_HCC_tumor.csv
+  Saved CO_Mega vs. TE correlation stats (n, Spearman rho, p) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_te_correlation_stats_spearman_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_all_genes_ribonn_HCC_tumor.png  (Pearson R = 0.4836, Pearson R² = 0.2339, p = 1.279e-550, n = 9,477)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_all_genes_spearman_ribonn_HCC_tumor.png  (Spearman rho = 0.4967, Spearman rho² = 0.2468, p = 1.555e-585, n = 9,477)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_autosomal_ribonn_HCC_tumor.png  (Pearson R = 0.4818, Pearson R² = 0.2321, p = 8.824e-528, n = 9,160)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_autosomal_spearman_ribonn_HCC_tumor.png  (Spearman rho = 0.4952, Spearman rho² = 0.2452, p = 6.996e-562, n = 9,160)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_X_linked_ribonn_HCC_tumor.png  (Pearson R = 0.4847, Pearson R² = 0.2349, p = 4.407e-20, n = 317)
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_vs_te_X_linked_spearman_ribonn_HCC_tumor.png  (Spearman rho = 0.4764, Spearman rho² = 0.2270, p = 2.3e-19, n = 317)
+  [join audit] human codon frequencies (all genes, for output table) (19,228 rows, key='ensembl_gene_id') x human TE (Ensembl gene ID) (9,494 rows, key='ensembl_gene_id'):
+    duplicated keys: 0 in human codon frequencies (all genes, for output table), 0 in human TE (Ensembl gene ID)
+    unmatched: 9,751 human codon frequencies (all genes, for output table) keys with no match in human TE (Ensembl gene ID); 17 human TE (Ensembl gene ID) keys with no match in human codon frequencies (all genes, for output table)
+    rows after merge ('left'): 19,228
+    Saved unmatched-key audit (9,768 rows) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/join_audit_codon_vs_te_output_table_ribonn_HCC_tumor.csv
+  Saved CO_Mega for all 19,228 genes to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_all_genes_ribonn_HCC_tumor.csv
+  [key uniqueness] co_mega_all_genes_human_fibroblast.csv (output; downstream scripts should join this on ensembl_gene_id): 19,228 rows, 19,228 distinct 'ensembl_gene_id' values; 0 values are duplicated (covering 0 rows).
+
+[5] Boxplot: CO_Mega, autosomal vs X-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_autosome_vs_X_ribonn_HCC_tumor.png  (Mann-Whitney U p = 6.91e-08, mean autosome = 0.508, mean X chromosome = 0.592)
+
+[5b] Boxplot: CO_Mega, autosomal vs X-linked vs Y-linked genes...
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_autosome_vs_X_vs_Y_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X vs Y (Human HCC tumor (ribonn))):
+    Autosome (n=18,351) vs X (n=834): p = 6.37e-08
+    Autosome (n=18,351) vs Y (n=43): p = 0.0844
+    X (n=834) vs Y (n=43): p = 0.819
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_autosome_vs_X_vs_Y_stats_ribonn_HCC_tumor.csv
+
+[6] Per-codon Pearson r with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Pearson r (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_codon_pearson_r_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_codon_pearson_r_barplot_ribonn_HCC_tumor.png
+
+[6b] Per-codon Spearman rho with TE (bootstrap SD, autosomal training genes)...
+  Saved per-codon Spearman rho (+ bootstrap SD) to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_codon_spearman_rho_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_codon_pearson_r_barplot_spearman_ribonn_HCC_tumor.png
+
+[7] Boxplots: CO_Mega by XCI category (Gylemo classification)...
+  148 of 834 X-linked genes have a defined XCI status in the Gylemo table (686 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Gylemo_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Gylemo, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=148): p = 0.0932
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_autosome_vs_X_with_defined_XCI_stats_Gylemo_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_XCI_categories_full_Gylemo_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Gylemo, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0589
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.362
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.993
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.999
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.903
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.687
+    Xi-silent (n=90) vs NPX-NPY (n=33): p = 0.204
+    Xi-silent (n=90) vs PAR1 (n=16): p = 0.329
+    Xi-silent (n=90) vs PAR2 (n=2): p = 0.968
+    Xi-expressed (n=7) vs NPX-NPY (n=33): p = 0.326
+    Xi-expressed (n=7) vs PAR1 (n=16): p = 0.492
+    Xi-expressed (n=7) vs PAR2 (n=2): p = 1
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.924
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.971
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.941
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_XCI_categories_full_stats_Gylemo_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_XCI_categories_reduced_Gylemo_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Gylemo, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=90): p = 0.0589
+    Autosome (n=18,394) vs Xi-expressed (n=7): p = 0.362
+    Xi-silent (n=90) vs Xi-expressed (n=7): p = 0.687
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_XCI_categories_reduced_stats_Gylemo_ribonn_HCC_tumor.csv
+
+[8] Boxplots: CO_Mega by XCI category (Neha classification)...
+  384 of 834 X-linked genes have a defined XCI status in the Neha table (450 excluded from these boxplots).
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_autosome_vs_X_with_defined_XCI_Neha_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs X (defined XCI status, Neha, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs X (defined XCI) (n=384): p = 3.27e-07
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_autosome_vs_X_with_defined_XCI_stats_Neha_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_XCI_categories_full_Neha_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega by XCI category (Neha, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 3.15e-07
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0429
+    Autosome (n=18,394) vs NPX-NPY (n=33): p = 0.993
+    Autosome (n=18,394) vs PAR1 (n=16): p = 0.999
+    Autosome (n=18,394) vs PAR2 (n=2): p = 0.903
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.785
+    Xi-silent (n=297) vs NPX-NPY (n=33): p = 0.0637
+    Xi-silent (n=297) vs PAR1 (n=16): p = 0.173
+    Xi-silent (n=297) vs PAR2 (n=2): p = 0.957
+    Xi-expressed (n=36) vs NPX-NPY (n=33): p = 0.111
+    Xi-expressed (n=36) vs PAR1 (n=16): p = 0.187
+    Xi-expressed (n=36) vs PAR2 (n=2): p = 0.973
+    NPX-NPY (n=33) vs PAR1 (n=16): p = 0.924
+    NPX-NPY (n=33) vs PAR2 (n=2): p = 0.971
+    PAR1 (n=16) vs PAR2 (n=2): p = 0.941
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_XCI_categories_full_stats_Neha_ribonn_HCC_tumor.csv
+  Saved: /lab/solexa_page/xueqi/analysis_codon/figures/ribonn/HCC_tumor/co_mega_boxplot_XCI_categories_reduced_Neha_ribonn_HCC_tumor.png
+  Pairwise Mann-Whitney U p-values (CO_Mega: Autosome vs Xi-silent vs Xi-expressed (Neha, Human HCC tumor (ribonn))):
+    Autosome (n=18,394) vs Xi-silent (n=297): p = 3.15e-07
+    Autosome (n=18,394) vs Xi-expressed (n=36): p = 0.0429
+    Xi-silent (n=297) vs Xi-expressed (n=36): p = 0.785
+  Saved pairwise stats to /lab/solexa_page/xueqi/analysis_codon/tables/ribonn/HCC_tumor/co_mega_XCI_categories_reduced_stats_Neha_ribonn_HCC_tumor.csv
+
+=== Done ===

@@ -3,3 +3,4 @@ data/chicken_CDS_sequence.txt
 data/chicken_CDS_sequence.csv
 data/
 **/*.csv
+ribonn/
